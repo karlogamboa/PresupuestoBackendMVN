@@ -1,0 +1,16 @@
+[Unit]
+Description=Presupuesto Backend Application
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+ExecStart=/usr/bin/java -jar /home/ubuntu/presupuesto-backend-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

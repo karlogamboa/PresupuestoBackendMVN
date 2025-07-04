@@ -1,0 +1,192 @@
+package com.cdc.presupuesto.controller;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientException;
+
+import java.util.Map;
+import java.util.HashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+@RestController
+public class AuthController {
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private static final String ERROR_DESCRIPTION = "error_description";
+    private static final String ERROR = "error";
+    private static final String EMAIL = "email";
+    private static final String PREFERRED_USERNAME = "preferred_username";
+    private static final String GROUPS = "groups";
+
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
+
+    @Value("${okta.oauth2.issuer}")
+    private String issuer;
+
+    @Value("${okta.oauth2.client-id}")
+    private String clientId;
+
+    @Value("${okta.oauth2.client-secret:}")
+    private String clientSecret;
+
+    @Value("${okta.oauth2.audience:api://default}")
+    private String audience;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @PostMapping("/api/userInfo")
+    public ResponseEntity<Map<String, Object>> getUserInfo(@AuthenticationPrincipal Jwt jwt) {
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("sub", jwt.getSubject());
+        if (jwt.getClaim(EMAIL) != null) userInfo.put(EMAIL, jwt.getClaim(EMAIL));
+        if (jwt.getClaim("name") != null) userInfo.put("name", jwt.getClaim("name"));
+        if (jwt.getClaim(PREFERRED_USERNAME) != null) userInfo.put(PREFERRED_USERNAME, jwt.getClaim(PREFERRED_USERNAME));
+        if (jwt.getClaim(GROUPS) != null) userInfo.put(GROUPS, jwt.getClaim(GROUPS));
+        return ResponseEntity.ok(userInfo);
+    }
+
+    @PostMapping("/api/exchange-token")
+    @SuppressWarnings("rawtypes")
+    public ResponseEntity<Map<String, Object>> exchangeToken(@RequestBody Map<String, String> request) {
+        String authCode = request.get("code");
+        String redirectUri = request.get("redirectUri");
+        String codeVerifier = request.get("codeVerifier");
+
+        if (authCode == null || authCode.isEmpty()) {
+            return buildBadRequest("Authorization code is required");
+        }
+
+        try {
+            ResponseEntity<Map> tokenResponse = exchangeAuthCodeForTokens(authCode, redirectUri, codeVerifier);
+            return buildTokenExchangeResponse(tokenResponse);
+        } catch (RestClientException e) {
+            logger.error("RestClientException during token exchange: {}", e.getMessage(), e);
+            return buildServerError("Token exchange failed: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error during token exchange: {}", e.getMessage(), e);
+            return buildServerError("Unexpected error during token exchange: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private ResponseEntity<Map> exchangeAuthCodeForTokens(String authCode, String redirectUri, String codeVerifier) {
+        String tokenEndpoint = issuer + "/v1/token";
+        MultiValueMap<String, String> tokenRequestBody = new LinkedMultiValueMap<>();
+        tokenRequestBody.add("grant_type", "authorization_code");
+        tokenRequestBody.add("code", authCode);
+        tokenRequestBody.add("client_id", clientId);
+        tokenRequestBody.add("client_secret", clientSecret);
+        tokenRequestBody.add("redirect_uri", redirectUri != null ? redirectUri : "http://localhost:3000/callback");
+        if (codeVerifier != null && !codeVerifier.isEmpty()) {
+            tokenRequestBody.add("code_verifier", codeVerifier);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set("Accept", "application/json");
+        headers.set("User-Agent", "PresupuestoBackend/1.0");
+
+        HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(tokenRequestBody, headers);
+
+        return restTemplate.exchange(
+            tokenEndpoint,
+            HttpMethod.POST,
+            tokenRequest,
+            Map.class
+        );
+    }
+
+    @SuppressWarnings("rawtypes")
+    private ResponseEntity<Map<String, Object>> buildTokenExchangeResponse(ResponseEntity<Map> tokenResponse) {
+        if (tokenResponse.getStatusCode() == HttpStatus.OK && tokenResponse.getBody() != null) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tokens = tokenResponse.getBody();
+            if (tokens != null) {
+                Map<String, Object> response = buildTokenResponse(tokens);
+                return ResponseEntity.ok(response);
+            } else {
+                return buildServerError("Empty response from token endpoint");
+            }
+        } else {
+            logger.error("Token exchange failed with status: {}", tokenResponse.getStatusCode());
+            if (tokenResponse.getBody() != null) {
+                logger.error("Error response: {}", tokenResponse.getBody());
+            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                ERROR, "invalid_grant",
+                ERROR_DESCRIPTION, "Failed to exchange authorization code for tokens. Status: " + tokenResponse.getStatusCode()
+            ));
+        }
+    }
+    private Map<String, Object> buildTokenResponse(Map<String, Object> tokens) {
+        Map<String, Object> response = new HashMap<>();
+        putIfNotNull(response, "access_token", tokens.get("access_token"));
+        putIfNotNull(response, "id_token", tokens.get("id_token"));
+        putIfNotNull(response, "refresh_token", tokens.get("refresh_token"));
+        putIfNotNull(response, "token_type", tokens.get("token_type"));
+        putIfNotNull(response, "expires_in", tokens.get("expires_in"));
+        putIfNotNull(response, "scope", tokens.get("scope"));
+        response.put("issuer", issuer);
+        response.put("audience", audience);
+        response.put("client_id", clientId);
+        response.put("success", true);
+        response.put("message", "Token exchange completed successfully");
+        return response;
+    }
+
+    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> buildBadRequest(String description) {
+        return ResponseEntity.badRequest().body(Map.of(
+            ERROR, "invalid_request",
+            ERROR_DESCRIPTION, description
+        ));
+    }
+
+    private ResponseEntity<Map<String, Object>> buildServerError(String description) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+            ERROR, "server_error",
+            ERROR_DESCRIPTION, description
+        ));
+    }
+
+    @PostMapping("/api/logout")
+    public ResponseEntity<Map<String, String>> logout() {
+        return ResponseEntity.ok(Map.of(
+            "status", "success",
+            "message", "Logged out successfully"
+        ));
+    }
+
+    @GetMapping("/api/okta-config")
+    public ResponseEntity<Map<String, String>> getOktaConfig() {
+        Map<String, String> config = Map.of(
+            "issuer", issuer,
+            "clientId", clientId
+        );
+
+        // Usa el valor de allowedOrigins (de AWS Parameter Store o properties)
+        String[] origins = allowedOrigins.split(",");
+        String originHeader = origins.length > 0 ? origins[0].trim() : "*";
+
+        return ResponseEntity.ok()
+            .header("Access-Control-Allow-Origin", originHeader)
+            .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Access-Control-Allow-Credentials", "true")
+            .header("Content-Security-Policy", "default-src 'self' https: http: 'unsafe-inline' 'unsafe-eval'")
+            .body(config);
+    }
+}
