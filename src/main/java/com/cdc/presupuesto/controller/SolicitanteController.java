@@ -39,29 +39,6 @@ public class SolicitanteController {
         return solicitante != null ? ResponseEntity.ok(solicitante) : ResponseEntity.notFound().build();
     }
 
-    @PostMapping
-    public ResponseEntity<Solicitante> createSolicitante(@RequestBody Solicitante solicitante,
-                                                        @AuthenticationPrincipal Jwt jwt) {
-        Solicitante created = solicitanteService.saveSolicitante(solicitante);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{numEmpleado}")
-    public ResponseEntity<Solicitante> updateSolicitante(@PathVariable String numEmpleado, 
-                                                        @RequestBody Solicitante solicitante,
-                                                        @AuthenticationPrincipal Jwt jwt) {
-        solicitante.setNumEmpleado(numEmpleado);
-        Solicitante updated = solicitanteService.saveSolicitante(solicitante);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{numEmpleado}")
-    public ResponseEntity<Void> deleteSolicitante(@PathVariable String numEmpleado,
-                                                 @AuthenticationPrincipal Jwt jwt) {
-        solicitanteService.deleteSolicitante(numEmpleado);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importSolicitantesFromCSV(
             @RequestParam("file") MultipartFile file,

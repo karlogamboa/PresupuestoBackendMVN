@@ -70,56 +70,6 @@ public class AuthController {
         return ResponseEntity.ok(userInfo);
     }
 
-    /**
-     * Endpoint de debug para ver todos los claims del JWT
-     */
-    @PostMapping("/api/debug/jwt-claims")
-    public ResponseEntity<Map<String, Object>> getJwtClaims(@AuthenticationPrincipal Jwt jwt) {
-        Map<String, Object> debugInfo = new HashMap<>();
-        debugInfo.put("allClaims", jwt.getClaims());
-        debugInfo.put("subject", jwt.getSubject());
-        debugInfo.put("issuedAt", jwt.getIssuedAt());
-        debugInfo.put("expiresAt", jwt.getExpiresAt());
-        debugInfo.put("headers", jwt.getHeaders());
-        
-        logger.info("Debug JWT Claims: {}", jwt.getClaims());
-        
-        return ResponseEntity.ok(debugInfo);
-    }
-
-    /**
-     * Endpoint de debug para probar la búsqueda de usuario en DynamoDB
-     */
-    @PostMapping("/api/debug/user-lookup")
-    public ResponseEntity<Map<String, Object>> debugUserLookup(@AuthenticationPrincipal Jwt jwt) {
-        Map<String, Object> debugInfo = new HashMap<>();
-        
-        try {
-            // Obtener información del usuario
-            Map<String, Object> userInfo = userInfoService.getUserInfo(jwt);
-            String userRole = userInfoService.getUserRoles(jwt);
-            boolean isAdmin = userInfoService.isAdmin(jwt);
-            
-            debugInfo.put("userInfoFromDynamoDB", userInfo);
-            debugInfo.put("userRoles", List.of(userRole));
-            debugInfo.put("isAdmin", isAdmin);
-            debugInfo.put("jwtClaims", jwt.getClaims());
-            
-            logger.info("Debug User Lookup: userInfo={}, roles={}, isAdmin={}", userInfo, userRole, isAdmin);
-            
-        } catch (Exception e) {
-            debugInfo.put("error", e.getMessage());
-            logger.error("Error in debug user lookup: {}", e.getMessage(), e);
-        }
-        
-        return ResponseEntity.ok(debugInfo);
-    }
-
-    /**
-     * Endpoint de debug para probar conectividad con DynamoDB
-     */
-    @GetMapping("/api/debug/dynamodb-test")
-    public ResponseEntity<Map<String, Object>> testDynamoDBConnection() {
         Map<String, Object> result = new HashMap<>();
         
         try {

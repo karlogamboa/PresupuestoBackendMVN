@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/departamentos")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
+@CrossOrigin(origins = {"/*", "https://d3i4aa04ftrk87.cloudfront.net"}, allowCredentials = "true")
 public class DepartamentoController {
     private static final Logger logger = LoggerFactory.getLogger(DepartamentoController.class);
 
@@ -31,39 +31,6 @@ public class DepartamentoController {
     public ResponseEntity<List<Departamento>> getAllDepartamentos(@AuthenticationPrincipal Jwt jwt) {
         List<Departamento> departamentos = departamentoService.getAllDepartamentos();
         return ResponseEntity.ok(departamentos);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Departamento> getDepartamentoById(@PathVariable String id,
-                                                           @AuthenticationPrincipal Jwt jwt) {
-        Departamento departamento = departamentoService.getDepartamentoById(id);
-        return departamento != null ? ResponseEntity.ok(departamento) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<Departamento> createDepartamento(@RequestBody Departamento departamento,
-                                                          @AuthenticationPrincipal Jwt jwt) {
-        if (departamento.getId() == null || departamento.getId().isEmpty()) {
-            departamento.setId(UUID.randomUUID().toString());
-        }
-        Departamento created = departamentoService.saveDepartamento(departamento);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Departamento> updateDepartamento(@PathVariable String id, 
-                                                          @RequestBody Departamento departamento,
-                                                          @AuthenticationPrincipal Jwt jwt) {
-        departamento.setId(id);
-        Departamento updated = departamentoService.saveDepartamento(departamento);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartamento(@PathVariable String id,
-                                                   @AuthenticationPrincipal Jwt jwt) {
-        departamentoService.deleteDepartamento(id);
-        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/import-csv")

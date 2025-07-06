@@ -33,38 +33,6 @@ public class ProveedorController {
         return ResponseEntity.ok(proveedores);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Proveedor> getProveedorById(@PathVariable String id,
-                                                     @AuthenticationPrincipal Jwt jwt) {
-        Proveedor proveedor = proveedorService.getProveedorById(id);
-        return proveedor != null ? ResponseEntity.ok(proveedor) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<Proveedor> createProveedor(@RequestBody Proveedor proveedor,
-                                                     @AuthenticationPrincipal Jwt jwt) {
-        if (proveedor.getId() == null || proveedor.getId().isEmpty()) {
-            proveedor.setId(UUID.randomUUID().toString());
-        }
-        Proveedor created = proveedorService.saveProveedor(proveedor);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Proveedor> updateProveedor(@PathVariable String id, @RequestBody Proveedor proveedor,
-                                                     @AuthenticationPrincipal Jwt jwt) {
-        proveedor.setId(id);
-        Proveedor updated = proveedorService.saveProveedor(proveedor);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProveedor(@PathVariable String id,
-                                                @AuthenticationPrincipal Jwt jwt) {
-        proveedorService.deleteProveedor(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importProveedoresFromCSV(
             @RequestParam("file") MultipartFile file,

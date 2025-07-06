@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/categorias-gasto")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
+@CrossOrigin(origins = {"/*", "https://d3i4aa04ftrk87.cloudfront.net"}, allowCredentials = "true")
 public class CategoriaGastoController {
     private static final Logger logger = LoggerFactory.getLogger(CategoriaGastoController.class);
 
@@ -32,40 +32,6 @@ public class CategoriaGastoController {
         List<CategoriaGasto> categorias = categoriaGastoService.getAllCategorias();
         return ResponseEntity.ok(categorias);
     }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoriaGasto> getCategoriaById(@PathVariable String id,
-                                                          @AuthenticationPrincipal Jwt jwt) {
-        CategoriaGasto categoria = categoriaGastoService.getCategoriaById(id);
-        return categoria != null ? ResponseEntity.ok(categoria) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<CategoriaGasto> createCategoria(@RequestBody CategoriaGasto categoria,
-                                                         @AuthenticationPrincipal Jwt jwt) {
-        if (categoria.getId() == null || categoria.getId().isEmpty()) {
-            categoria.setId(UUID.randomUUID().toString());
-        }
-        CategoriaGasto created = categoriaGastoService.saveCategoria(categoria);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<CategoriaGasto> updateCategoria(@PathVariable String id, 
-                                                         @RequestBody CategoriaGasto categoria,
-                                                         @AuthenticationPrincipal Jwt jwt) {
-        categoria.setId(id);
-        CategoriaGasto updated = categoriaGastoService.saveCategoria(categoria);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategoria(@PathVariable String id,
-                                                @AuthenticationPrincipal Jwt jwt) {
-        categoriaGastoService.deleteCategoria(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importCategoriasFromCSV(
             @RequestParam("file") MultipartFile file,

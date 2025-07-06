@@ -29,27 +29,23 @@ public class LambdaInfoController {
     })
     public ResponseEntity<Map<String, Object>> getLambdaInfo() {
         Map<String, Object> info = new HashMap<>();
-        
         info.put("status", "running");
         info.put("environment", "lambda");
         info.put("functionUrl", lambdaFunctionUrl.isEmpty() ? "Not configured" : lambdaFunctionUrl);
-        
+
         // Available endpoints
         Map<String, String> endpoints = new HashMap<>();
         endpoints.put("health", "/health");
         endpoints.put("userInfo", "/api/userInfo");
         endpoints.put("solicitudes", "/api/solicitudes-presupuesto");
         endpoints.put("usuarios", "/api/usuarios");
-        endpoints.put("areas", "/api/areas");
         endpoints.put("departamentos", "/api/departamentos");
-        endpoints.put("subdepartamentos", "/api/subdepartamentos");
         endpoints.put("proveedores", "/api/proveedores");
         endpoints.put("categorias", "/api/categorias-gasto");
         endpoints.put("swagger-ui", "/swagger-ui.html");
         endpoints.put("api-docs", "/v3/api-docs");
-        
         info.put("endpoints", endpoints);
-        
+
         // Documentation links
         Map<String, String> documentation = new HashMap<>();
         if (!lambdaFunctionUrl.isEmpty()) {
@@ -61,10 +57,13 @@ public class LambdaInfoController {
             documentation.put("openapi-json", "Configure LAMBDA_FUNCTION_URL environment variable");
             documentation.put("health-check", "/health");
         }
-        
         info.put("documentation", documentation);
-        
-        return ResponseEntity.ok(info);
+
+        return ResponseEntity.ok()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token")
+            .header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+            .body(info);
     }
 
     @GetMapping("/swagger-redirect")
@@ -72,7 +71,6 @@ public class LambdaInfoController {
                description = "Redirects to the Swagger UI documentation")
     public ResponseEntity<Map<String, String>> getSwaggerRedirect() {
         Map<String, String> response = new HashMap<>();
-        
         if (!lambdaFunctionUrl.isEmpty()) {
             response.put("swaggerUrl", lambdaFunctionUrl + "/swagger-ui.html");
             response.put("message", "Access Swagger UI at the provided URL");
@@ -80,7 +78,10 @@ public class LambdaInfoController {
             response.put("swaggerUrl", "/swagger-ui.html");
             response.put("message", "Access Swagger UI at /swagger-ui.html");
         }
-        
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok()
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token")
+            .header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+            .body(response);
     }
 }

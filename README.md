@@ -23,7 +23,7 @@ Este es el backend del sistema de gestión de presupuestos desarrollado con Spri
 
 ### 📊 Base de Datos
 - **DynamoDB**: Almacenamiento NoSQL en AWS
-- **Tablas**: usuarios, solicitudes-presupuesto, areas, departamentos, etc.
+- **Tablas**: usuarios, solicitudes-presupuesto, departamentos, etc.
 - **Enhanced Client**: Uso de DynamoDB Enhanced Client para operaciones
 
 ## Estructura del Proyecto
@@ -48,24 +48,26 @@ src/main/java/com/cdc/presupuesto/
 
 ### Gestión de Usuarios
 - `GET /api/usuarios` - Listar todos los usuarios (Admin)
-- `GET /api/usuarios/{id}` - Obtener usuario por ID
-- `POST /api/usuarios` - Crear nuevo usuario (Admin)
-- `PUT /api/usuarios/{id}` - Actualizar usuario (Admin)
-- `DELETE /api/usuarios/{id}` - Eliminar usuario (Admin)
+- `GET /api/usuarios/{email}` - Obtener usuario por email
 - `POST /api/usuarios/import-csv` - Importar usuarios desde CSV (Admin)
 - `GET /api/usuarios/csv-template` - Descargar template CSV
 
 ### Solicitudes de Presupuesto
 - `GET /api/solicitudes-presupuesto` - Listar solicitudes
-- `POST /api/solicitudes-presupuesto` - Crear nueva solicitud
-- `PUT /api/solicitudes-presupuesto/{id}` - Actualizar solicitud
-- `DELETE /api/solicitudes-presupuesto/{id}` - Eliminar solicitud
+- `GET /api/solicitudes-presupuesto/{id}` - Obtener solicitud por ID
+- `POST /api/solicitudes-presupuesto/cambiar-estatus` - Cambiar estatus de solicitud
 
-### Otros
-- `GET /api/areas` - Gestión de áreas
-- `GET /api/departamentos` - Gestión de departamentos
-- `GET /api/proveedores` - Gestión de proveedores
-- `GET /api/categorias-gasto` - Categorías de gasto
+### Catalogos
+- `GET /api/departamentos` - Listar departamentos
+- `POST /api/departamentos/import-csv` - Importar departamentos desde CSV
+- `GET /api/proveedores` - Listar proveedores
+- `POST /api/proveedores/import-csv` - Importar proveedores desde CSV
+- `GET /api/solicitantes` - Listar solicitantes
+- `POST /api/solicitantes/import-csv` - Importar solicitantes desde CSV
+- `GET /api/categorias-gasto` - Listar categorías de gasto
+- `POST /api/categorias-gasto/import-csv` - Importar categorías desde CSV
+
+### Health Check
 - `GET /health` - Health check
 
 ## Configuración
@@ -73,7 +75,7 @@ src/main/java/com/cdc/presupuesto/
 ### Variables de Entorno
 ```properties
 # AWS
-AWS_REGION=us-east-1
+AWS_REGION=us-east-2
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
 
@@ -87,7 +89,7 @@ okta.oauth2.client-secret=your-client-secret
 okta.oauth2.audience=api://default
 
 # CORS
-cors.allowed-origins=http://localhost:3000,https://your-frontend.com
+cors.allowed-origins='https://d3i4aa04ftrk87.cloudfront.net'
 
 # Email
 spring.mail.host=email-smtp.us-east-1.amazonaws.com
@@ -171,7 +173,7 @@ curl -o template.csv http://localhost:8080/api/usuarios/csv-template
 
 ### 2. Preparar archivo CSV
 ```csv
-email,nombre,numeroEmpleado,role,departamento,area,activo
+email,nombre,numeroEmpleado,role,departamento,activo
 juan.perez@empresa.com,Juan Pérez,EMP001,User,IT,Sistemas,true
 admin@empresa.com,Administrador,EMP002,Admin,Administración,Finanzas,true
 ```
@@ -182,57 +184,6 @@ curl -X POST \
   -H "Authorization: Bearer your-jwt-token" \
   -F "file=@usuarios.csv" \
   http://localhost:8080/api/usuarios/import-csv
-```
-
-## Testing
-
-### Ejecutar tests
-```bash
-mvn test
-```
-
-### Test de importación CSV
-```bash
-# Usar el archivo sample_usuarios.csv incluido
-curl -X POST \
-  -H "Authorization: Bearer your-admin-token" \
-  -F "file=@sample_usuarios.csv" \
-  http://localhost:8080/api/usuarios/import-csv
-```
-
-## Estructura de Datos
-
-### Usuario
-```json
-{
-  "id": "uuid",
-  "email": "usuario@empresa.com",
-  "nombre": "Nombre Completo",
-  "numeroEmpleado": "EMP001",
-  "role": "User|Admin",
-  "departamento": "IT",
-  "area": "Sistemas",
-  "activo": "true",
-  "fechaCreacion": "2025-01-01 10:00:00",
-  "fechaActualizacion": "2025-01-01 10:00:00"
-}
-```
-
-### Solicitud de Presupuesto
-```json
-{
-  "id": "uuid",
-  "numEmpleado": "EMP001",
-  "fechaSolicitud": "2025-01-01",
-  "area": "IT",
-  "departamento": "Sistemas",
-  "subdepartamento": "Desarrollo",
-  "proveedor": "Proveedor XYZ",
-  "categoriaGasto": "Software",
-  "monto": 1000.00,
-  "estatus": "Pendiente",
-  "comentarios": "Comentarios adicionales"
-}
 ```
 
 ## Seguridad
@@ -273,34 +224,6 @@ mvn spring-boot:run
 ```bash
 mvn clean package
 java -jar target/presupuesto-backend-1.0.0-SNAPSHOT.jar
-```
-
-### AWS Lambda con SAM CLI (Recomendado)
-```bash
-# Instalar SAM CLI primero
-# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
-
-# Deployment automático
-./deploy-sam.sh        # Linux/macOS
-deploy-sam.bat         # Windows
-```
-
-### AWS Lambda Manual
-```bash
-# Compilar para Lambda
-mvn clean package
-
-# Deployment manual
-./deploy-lambda.sh     # Linux/macOS
-deploy-lambda.bat      # Windows
-```
-
-### Docker (opcional)
-```dockerfile
-FROM openjdk:17-jdk-slim
-COPY target/presupuesto-backend-1.0.0-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app.jar"]
 ```
 
 ## Arquitectura Multi-Entorno
@@ -382,4 +305,3 @@ Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para detalles.
 
 Para soporte técnico o preguntas, contactar a:
 - Email: soporte@empresa.com
-- Documentación: Ver `CSV_IMPORT_DOCUMENTATION.md` para detalles específicos de importación CSV
