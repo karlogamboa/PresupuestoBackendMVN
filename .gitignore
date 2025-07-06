@@ -1,0 +1,33 @@
+# Maven build directories
+target/
+
+# IDE - Visual Studio Code
+.vscode/
+*.code-workspace
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+
+# Compiled files
+*.class
+
+# Logs
+*.log
+logs/
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Others
+.DS_Store
+Thumbs.db
+.env
