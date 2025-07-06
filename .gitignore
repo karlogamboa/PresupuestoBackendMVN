@@ -31,3 +31,9 @@ logs/
 .DS_Store
 Thumbs.db
 .env
+.github/
+
+#scripts
+deploy-scripts/
+dynamodb-scripts/
+data/
