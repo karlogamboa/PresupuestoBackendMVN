@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,12 +28,14 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/usuarios")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 @Tag(name = "Usuarios", description = "API para gestionar usuarios del sistema")
 @SecurityRequirement(name = "JWT Authentication")
 public class UsuarioController {
 
     private static final Logger logger = LoggerFactory.getLogger(UsuarioController.class);
+
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Autowired
     private UsuarioRepository usuarioRepository;

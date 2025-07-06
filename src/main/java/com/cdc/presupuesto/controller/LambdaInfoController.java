@@ -13,12 +13,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
 @Tag(name = "Lambda Info", description = "Information about Lambda deployment and API documentation")
 public class LambdaInfoController {
 
     @Value("${lambda.function.url:}")
     private String lambdaFunctionUrl;
+
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @GetMapping("/lambda-info")
     @Operation(summary = "Get Lambda deployment information", 

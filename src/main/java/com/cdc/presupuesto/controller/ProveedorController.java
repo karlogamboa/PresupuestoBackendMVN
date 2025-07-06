@@ -6,6 +6,7 @@ import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,9 +21,12 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/proveedores")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
+// Remove hardcoded @CrossOrigin
 public class ProveedorController {
     private static final Logger logger = LoggerFactory.getLogger(ProveedorController.class);
+
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Autowired
     private ProveedorService proveedorService;

@@ -6,6 +6,7 @@ import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,9 +21,11 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/departamentos")
-@CrossOrigin(origins = {"/*", "https://d3i4aa04ftrk87.cloudfront.net"}, allowCredentials = "true")
 public class DepartamentoController {
     private static final Logger logger = LoggerFactory.getLogger(DepartamentoController.class);
+
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Autowired
     private DepartamentoService departamentoService;

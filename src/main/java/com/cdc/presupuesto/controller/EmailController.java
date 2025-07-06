@@ -2,6 +2,7 @@ package com.cdc.presupuesto.controller;
 
 import com.cdc.presupuesto.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,8 +13,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/emails")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 public class EmailController {
+
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Autowired
     private EmailService emailService;

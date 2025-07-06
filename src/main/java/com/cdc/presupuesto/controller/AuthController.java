@@ -70,28 +70,6 @@ public class AuthController {
         return ResponseEntity.ok(userInfo);
     }
 
-        Map<String, Object> result = new HashMap<>();
-        
-        try {
-            // Probar conexión listando usuarios
-            List<com.cdc.presupuesto.model.Usuario> usuarios = 
-                userInfoService.getAllUsersForDebug();
-            
-            result.put("success", true);
-            result.put("totalUsers", usuarios.size());
-            result.put("users", usuarios);
-            result.put("message", "Conexión con DynamoDB exitosa");
-            
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            result.put("message", "Error conectando con DynamoDB");
-            logger.error("Error testing DynamoDB connection: {}", e.getMessage(), e);
-        }
-        
-        return ResponseEntity.ok(result);
-    }
-
     @PostMapping("/api/exchange-token")
     @SuppressWarnings("rawtypes")
     public ResponseEntity<Map<String, Object>> exchangeToken(@RequestBody Map<String, String> request) {
