@@ -11,10 +11,11 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * Security configuration for local development
  * Disables authentication for testing purposes
+ * Active when NOT using lambda profile
  */
 @Configuration
 @EnableWebSecurity
-@Profile("!lambda")
+@Profile("!lambda") // Active when lambda profile is NOT used
 public class LocalSecurityConfig {
 
     @Bean
@@ -27,7 +28,7 @@ public class LocalSecurityConfig {
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
-            // Allow all requests for local development
+            // Allow all requests for local development - NO AUTHENTICATION
             .authorizeHttpRequests(authz -> authz
                 .anyRequest().permitAll()
             );

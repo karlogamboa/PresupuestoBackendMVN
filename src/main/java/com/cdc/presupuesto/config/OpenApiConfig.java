@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @Configuration
 public class OpenApiConfig {
@@ -39,6 +40,9 @@ public class OpenApiConfig {
     
     @Value("${openapi.cloudfront.url:}")
     private String cloudfrontUrl;
+    
+    @Value("${security.auth.enabled:true}")
+    private boolean authEnabled;
     
     @Autowired
     private Environment environment;
@@ -73,13 +77,27 @@ public class OpenApiConfig {
                     .description("CloudFront Distribution"));
         }
         
-        return new OpenAPI()
+        // Determine if we should show JWT security in documentation
+        boolean isLambdaProfile = Arrays.asList(environment.getActiveProfiles()).contains("lambda");
+        boolean showJwtSecurity = authEnabled && isLambdaProfile;
+        
+        String apiDescription = "API for Budget Management System CDC - Sistema de Gestión de Presupuestos\n\n" +
+                               "Esta API permite gestionar solicitudes de presupuesto, usuarios, áreas, departamentos y más.\n" +
+                               "Disponible tanto en EC2 como en AWS Lambda para máxima flexibilidad.\n\n";
+        
+        if (!authEnabled) {
+            apiDescription += "⚠️ **MODO DE PRUEBA**: Autenticación deshabilitada. Todas las APIs son de acceso libre.\n\n";
+        } else if (!isLambdaProfile) {
+            apiDescription += "🔓 **MODO DESARROLLO**: Sin autenticación requerida en desarrollo local.\n\n";
+        } else {
+            apiDescription += "🔐 **MODO PRODUCCIÓN**: Autenticación requerida vía API Gateway Authorizer.\n\n";
+        }
+        
+        OpenAPI openAPI = new OpenAPI()
                 .info(new Info()
                         .title("Presupuesto CDC API")
                         .version("1.0.0")
-                        .description("API for Budget Management System CDC - Sistema de Gestión de Presupuestos\n\n" +
-                                   "Esta API permite gestionar solicitudes de presupuesto, usuarios, áreas, departamentos y más.\n" +
-                                   "Disponible tanto en EC2 como en AWS Lambda para máxima flexibilidad.")
+                        .description(apiDescription)
                         .contact(new Contact()
                                 .name("CDC Development Team")
                                 .email("desarrollo@cdc.com")
@@ -87,16 +105,22 @@ public class OpenApiConfig {
                         .license(new License()
                                 .name("Proprietary")
                                 .url("https://cdc.com/license")))
-                .servers(servers)
-                .addSecurityItem(new SecurityRequirement()
+                .servers(servers);
+        
+        // Only add JWT security scheme if authentication is enabled and we're in lambda profile
+        if (showJwtSecurity) {
+            openAPI.addSecurityItem(new SecurityRequirement()
                         .addList("JWT Authentication"))
-                .components(new Components()
+                    .components(new Components()
                         .addSecuritySchemes("JWT Authentication", new SecurityScheme()
                                 .type(Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .in(In.HEADER)
                                 .name("Authorization")
-                                .description("JWT token obtained from Okta authentication")));
+                                .description("JWT token obtained from API Gateway Authorizer")));
+        }
+        
+        return openAPI;
     }
 }

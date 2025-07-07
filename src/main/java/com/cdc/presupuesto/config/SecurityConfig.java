@@ -34,7 +34,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 // Public endpoints - no authentication required
-                .requestMatchers("/health", "/api/okta-config", "/api/exchange-token").permitAll()
+                .requestMatchers("/health").permitAll()
                 // Swagger UI endpoints - public access for development
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                 // All API endpoints require authentication
