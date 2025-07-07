@@ -1,0 +1,260 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Spring Boot
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# IDE - Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# IDE - NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# IDE - VS Code
+.vscode/
+
+# OS - Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# OS - macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# OS - Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Logs
+*.log
+logs/
+log/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# AWS credentials and config
+.aws/
+aws-credentials
+aws-config
+
+# Sensitive configuration files
+application-local.properties
+application-dev.properties
+application-prod.properties
+*.p12
+*.pem
+*.key
+*.crt
+*.jks
+*.keystore
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Build and deployment artifacts
+build/
+dist/
+*.tgz
+
+# Lambda deployment
+function.zip
+deployment-package.zip
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# JetBrains IDE
+.idea_modules/
+*.iml
+*.ipr
+
+# Local configuration override
+override.conf
+
+
+# Project specific data files (keeping .csv examples but ignoring actual data)
+data/
+!data/*.csv
+
+# Deployment scripts (keep templates but ignore environment-specific configs)
+deploy-scripts/
+!deploy-scripts/*.sh
+!deploy-scripts/*.bat
+!deploy-scripts/*.service
+# Keep key files but ignore actual certificates/keys
+deploy-scripts/*.pem
+deploy-scripts/*.p12
+deploy-scripts/*.key
+deploy-scripts/*.crt
+
+# DynamoDB scripts (keep for reference)
+dynamodb-scripts/
+!dynamodb-scripts/*.sh
+!dynamodb-scripts/*.bat
+
+# Lambda specific ignores
+*.zip
+lambda-deployment-package.zip
+sam-build/
+.aws-sam/
+
+# Spring Boot specific
+*.original
+mvnw
+mvnw.cmd
+.mvn/
+
+# Test reports
+TEST-*.xml
+target/surefire-reports/
+target/failsafe-reports/
+
+# JaCoCo Code Coverage
+target/site/jacoco/
+
+# Sonar
+.sonar/
+.scannerwork/
+
+# Spring Boot DevTools
+.reloadtrigger
+
+# H2 Database (if used for testing)
+*.h2.db
+*.trace.db
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# AWS CLI profiles and cache
+.aws/cli/cache/
+.aws/cli/alias
+
+# Terraform (if used for infrastructure)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Docker
+Dockerfile.tmp
+docker-compose.override.yml
+
+# Local environment variables for different profiles
+.env.lambda
+.env.ec2
+.env.test
+
+# IDE specific Spring Boot configurations
+.spring-boot-devtools.properties
+
+# Maven wrapper (uncomment if you want to include Maven wrapper)
+# .mvn/wrapper/maven-wrapper.jar
+# .mvn/wrapper/maven-wrapper.properties
+
+# Performance profiling
+*.hprof
+*.prof
+
+# Application specific configs already covered above
+
+
+#data
+data/
+
+#scripts
+deploy-scripts/
+dynamodb-scripts/

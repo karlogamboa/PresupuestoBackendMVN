@@ -1,0 +1,3 @@
+email,nombre,numeroEmpleado,role,departamento,area,activo
+karlo@zicral.com,Karlo Gamboa,0001,Admin,IT,Sistemas,true
+karlo+1@zicral.com,Karlo +1,0002,User,Administración,Finanzas,true

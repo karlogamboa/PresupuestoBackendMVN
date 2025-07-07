@@ -62,33 +62,45 @@ public class CategoriaGastoService {
                 int rowNumber = i + 2; // +2 because we skip header and arrays are 0-indexed
                 
                 try {
-                    if (record.length < 6) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 6, got " + record.length + ")");
+                    if (record.length < 5) {
+                        errors.add("Row " + rowNumber + ": Insufficient columns (expected at least 5, got " + record.length + ")");
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    // Validar que el nombre no esté vacío primero
+                    String nombre = record[0].trim();
+                    if (nombre.isEmpty()) {
+                        errors.add("Row " + rowNumber + ": Nombre is required");
                         errorCount++;
                         continue;
                     }
                     
                     CategoriaGasto categoria = new CategoriaGasto();
-                    String id = record[0].trim();
-                    if (id.isEmpty()) {
-                        id = UUID.randomUUID().toString();
-                    }
-                    categoria.setId(id);
-                    categoria.setNombre(record[1].trim());
-                    categoria.setDescripcion(record[2].trim());
-                    categoria.setCuentaDeGastos(record[3].trim());
-                    categoria.setCuenta(record[4].trim());
                     
-                    // Parse saldo
+                    // Generar ID automáticamente a partir del nombre
+                    String id = generateCategoriaId(nombre);
+                    categoria.setId(id);
+                    
+                    // Mapear correctamente las columnas del CSV:
+                    // Columna 0: Nombre
+                    // Columna 1: Descripción  
+                    // Columna 2: Cuenta de gastos
+                    // Columna 3: Cuenta
+                    // Columna 4: Saldo
+                    categoria.setNombre(nombre);
+                    categoria.setDescripcion(record[1].trim());
+                    categoria.setCuentaDeGastos(record[2].trim());
+                    categoria.setCuenta(record[3].trim());
+                    
+                    // Parse saldo - manejar formatos como "$3,307,877.56" o "$-"
                     try {
-                        String saldoStr = record[5].trim();
-                        if (!saldoStr.isEmpty()) {
-                            categoria.setSaldo(Double.parseDouble(saldoStr));
-                        }
-                    } catch (NumberFormatException e) {
-                        errors.add("Row " + rowNumber + ": Invalid saldo format: " + record[5]);
-                        errorCount++;
-                        continue;
+                        String saldoStr = record[4].trim();
+                        Double saldoValue = parseSaldoValue(saldoStr);
+                        categoria.setSaldo(saldoValue);
+                    } catch (Exception e) {
+                        logger.warn("Row {}: Could not parse saldo '{}', setting to 0.0", rowNumber, record[4]);
+                        categoria.setSaldo(0.0);
                     }
                     
                     // Validate required fields
@@ -97,6 +109,9 @@ public class CategoriaGastoService {
                         errorCount++;
                         continue;
                     }
+                    
+                    logger.debug("Created categoria: ID={}, Nombre={}, Saldo={}", 
+                            categoria.getId(), categoria.getNombre(), categoria.getSaldo());
                     
                     categorias.add(categoria);
                     successCount++;
@@ -140,5 +155,73 @@ public class CategoriaGastoService {
         logger.info("CSV import completed. Success: {}, Errors: {}", successCount, errorCount);
         
         return result;
+    }
+    
+    /**
+     * Generate a unique ID for categoria based on name
+     * Format: CAT_{NORMALIZED_NAME}
+     */
+    private String generateCategoriaId(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return "CAT_" + UUID.randomUUID().toString();
+        }
+        
+        // Normalize the name: remove accents, convert to uppercase, replace spaces and special characters
+        String normalized = nombre.trim()
+            .toUpperCase()
+            .replaceAll("[ÁÀÂÃÄÅ]", "A")
+            .replaceAll("[ÉÈÊË]", "E")
+            .replaceAll("[ÍÌÎÏ]", "I")
+            .replaceAll("[ÓÒÔÕÖ]", "O")
+            .replaceAll("[ÚÙÛÜ]", "U")
+            .replaceAll("[Ñ]", "N")
+            .replaceAll("[Ç]", "C")
+            .replaceAll("[^A-Z0-9]", "_")  // Replace non-alphanumeric with underscore
+            .replaceAll("_+", "_")         // Replace multiple underscores with single
+            .replaceAll("^_|_$", "");      // Remove leading/trailing underscores
+        
+        // Limit length to avoid very long IDs
+        if (normalized.length() > 50) {
+            normalized = normalized.substring(0, 50);
+        }
+        
+        return "CAT_" + normalized;
+    }
+    
+    /**
+     * Parse saldo value from CSV string
+     * Handles formats like "$3,307,877.56", "$-", "-", etc.
+     */
+    private Double parseSaldoValue(String saldoStr) {
+        if (saldoStr == null || saldoStr.trim().isEmpty() || 
+            saldoStr.trim().equals("$-") || saldoStr.trim().equals("-")) {
+            return 0.0;
+        }
+        
+        try {
+            // Clean the saldo string: remove $, commas, and spaces
+            String cleanSaldo = saldoStr.trim()
+                    .replace("$", "")
+                    .replace(",", "")
+                    .replace(" ", "");
+            
+            // Handle negative values
+            boolean isNegative = cleanSaldo.startsWith("-");
+            if (isNegative) {
+                cleanSaldo = cleanSaldo.substring(1);
+            }
+            
+            // Handle empty string after cleaning
+            if (cleanSaldo.isEmpty()) {
+                return 0.0;
+            }
+            
+            Double value = Double.parseDouble(cleanSaldo);
+            return isNegative ? -value : value;
+            
+        } catch (NumberFormatException e) {
+            logger.warn("Could not parse saldo value: '{}', defaulting to 0.0", saldoStr);
+            return 0.0;
+        }
     }
 }

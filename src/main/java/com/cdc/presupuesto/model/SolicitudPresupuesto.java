@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
 
 import java.time.Instant;
 import java.util.List;
@@ -120,6 +121,7 @@ public class SolicitudPresupuesto {
         this.solicitante = solicitante;
     }
 
+    @DynamoDbSecondaryPartitionKey(indexNames = {"numeroEmpleado-index"})
     public String getNumeroEmpleado() {
         return numeroEmpleado;
     }
@@ -216,6 +218,7 @@ public class SolicitudPresupuesto {
         this.montoSubtotal = montoSubtotal;
     }
 
+    @DynamoDbSecondaryPartitionKey(indexNames = {"estatusConfirmacion-index"})
     public String getEstatusConfirmacion() {
         return estatusConfirmacion;
     }

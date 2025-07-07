@@ -69,10 +69,7 @@ public class DepartamentoService {
                     }
                     
                     Departamento departamento = new Departamento();
-                    String id = record[0].trim();
-                    if (id.isEmpty()) {
-                        id = UUID.randomUUID().toString();
-                    }
+                    String id = UUID.randomUUID().toString();                    
                     departamento.setId(id);
                     departamento.setNombreDepartamento(record[1].trim());
                     departamento.setSubDepartamento(record[2].trim());

@@ -1,5 +1,7 @@
 package com.cdc.presupuesto.controller;
 
+import com.cdc.presupuesto.service.UserInfoService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +14,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,9 +24,6 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
     private static final String ERROR_DESCRIPTION = "error_description";
     private static final String ERROR = "error";
-    private static final String EMAIL = "email";
-    private static final String PREFERRED_USERNAME = "preferred_username";
-    private static final String GROUPS = "groups";
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
@@ -41,16 +41,105 @@ public class AuthController {
     private String audience;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    
+    @Autowired
+    private UserInfoService userInfoService;
 
     @PostMapping("/api/userInfo")
     public ResponseEntity<Map<String, Object>> getUserInfo(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("sub", jwt.getSubject());
-        if (jwt.getClaim(EMAIL) != null) userInfo.put(EMAIL, jwt.getClaim(EMAIL));
-        if (jwt.getClaim("name") != null) userInfo.put("name", jwt.getClaim("name"));
-        if (jwt.getClaim(PREFERRED_USERNAME) != null) userInfo.put(PREFERRED_USERNAME, jwt.getClaim(PREFERRED_USERNAME));
-        if (jwt.getClaim(GROUPS) != null) userInfo.put(GROUPS, jwt.getClaim(GROUPS));
+        // userInfo.put("sub", jwt.getSubject());
+        // if (jwt.getClaim("email") != null) userInfo.put("email", jwt.getClaim("email"));
+        // if (jwt.getClaim("name") != null) userInfo.put("name", jwt.getClaim("name"));
+        // if (jwt.getClaim("preferred_username") != null) userInfo.put("preferred_username", jwt.getClaim("preferred_username"));
+        // if (jwt.getClaim("groups") != null) userInfo.put("groups", jwt.getClaim("groups"));
+        
+        // Agregar información de debug sobre claims disponibles
+        logger.debug("Claims disponibles en JWT: {}", jwt.getClaims().keySet());
+        
+        // Obtener información adicional del usuario desde DynamoDB
+        Map<String, Object> dynamoUserInfo = userInfoService.getUserInfo(jwt);
+        
+        // Agregar toda la información del usuario desde DynamoDB
+        userInfo.putAll(dynamoUserInfo);
+        
+        // Agregar roles como lista
+        String userRole = userInfoService.getUserRoles(jwt);
+        userInfo.put("role", userRole);
+        
         return ResponseEntity.ok(userInfo);
+    }
+
+    /**
+     * Endpoint de debug para ver todos los claims del JWT
+     */
+    @PostMapping("/api/debug/jwt-claims")
+    public ResponseEntity<Map<String, Object>> getJwtClaims(@AuthenticationPrincipal Jwt jwt) {
+        Map<String, Object> debugInfo = new HashMap<>();
+        debugInfo.put("allClaims", jwt.getClaims());
+        debugInfo.put("subject", jwt.getSubject());
+        debugInfo.put("issuedAt", jwt.getIssuedAt());
+        debugInfo.put("expiresAt", jwt.getExpiresAt());
+        debugInfo.put("headers", jwt.getHeaders());
+        
+        logger.info("Debug JWT Claims: {}", jwt.getClaims());
+        
+        return ResponseEntity.ok(debugInfo);
+    }
+
+    /**
+     * Endpoint de debug para probar la búsqueda de usuario en DynamoDB
+     */
+    @PostMapping("/api/debug/user-lookup")
+    public ResponseEntity<Map<String, Object>> debugUserLookup(@AuthenticationPrincipal Jwt jwt) {
+        Map<String, Object> debugInfo = new HashMap<>();
+        
+        try {
+            // Obtener información del usuario
+            Map<String, Object> userInfo = userInfoService.getUserInfo(jwt);
+            String userRole = userInfoService.getUserRoles(jwt);
+            boolean isAdmin = userInfoService.isAdmin(jwt);
+            
+            debugInfo.put("userInfoFromDynamoDB", userInfo);
+            debugInfo.put("userRoles", List.of(userRole));
+            debugInfo.put("isAdmin", isAdmin);
+            debugInfo.put("jwtClaims", jwt.getClaims());
+            
+            logger.info("Debug User Lookup: userInfo={}, roles={}, isAdmin={}", userInfo, userRole, isAdmin);
+            
+        } catch (Exception e) {
+            debugInfo.put("error", e.getMessage());
+            logger.error("Error in debug user lookup: {}", e.getMessage(), e);
+        }
+        
+        return ResponseEntity.ok(debugInfo);
+    }
+
+    /**
+     * Endpoint de debug para probar conectividad con DynamoDB
+     */
+    @GetMapping("/api/debug/dynamodb-test")
+    public ResponseEntity<Map<String, Object>> testDynamoDBConnection() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Probar conexión listando usuarios
+            List<com.cdc.presupuesto.model.Usuario> usuarios = 
+                userInfoService.getAllUsersForDebug();
+            
+            result.put("success", true);
+            result.put("totalUsers", usuarios.size());
+            result.put("users", usuarios);
+            result.put("message", "Conexión con DynamoDB exitosa");
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("message", "Error conectando con DynamoDB");
+            logger.error("Error testing DynamoDB connection: {}", e.getMessage(), e);
+        }
+        
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/api/exchange-token")
