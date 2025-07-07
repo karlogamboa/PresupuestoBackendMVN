@@ -19,7 +19,6 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/solicitantes")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 public class SolicitanteController {
     private static final Logger logger = LoggerFactory.getLogger(SolicitanteController.class);
 

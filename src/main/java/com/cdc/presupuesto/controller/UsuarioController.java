@@ -27,7 +27,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/usuarios")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 @Tag(name = "Usuarios", description = "API para gestionar usuarios del sistema")
 @SecurityRequirement(name = "JWT Authentication")
 public class UsuarioController {

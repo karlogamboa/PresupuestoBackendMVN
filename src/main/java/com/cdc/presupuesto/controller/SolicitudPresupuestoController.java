@@ -28,7 +28,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
-@CrossOrigin(origins = "*")
 @Tag(name = "Solicitudes de Presupuesto", description = "API para gestionar solicitudes de presupuesto")
 @SecurityRequirement(name = "JWT Authentication")
 public class SolicitudPresupuestoController {

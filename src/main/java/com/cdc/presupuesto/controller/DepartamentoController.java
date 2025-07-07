@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/departamentos")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 public class DepartamentoController {
     private static final Logger logger = LoggerFactory.getLogger(DepartamentoController.class);
 

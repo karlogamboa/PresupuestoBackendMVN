@@ -31,6 +31,15 @@ public class OpenApiConfig {
     @Value("${lambda.function.url:}")
     private String lambdaFunctionUrl;
     
+    @Value("${openapi.development.server.url:http://localhost}")
+    private String developmentServerUrl;
+    
+    @Value("${openapi.production.server.url:}")
+    private String productionServerUrl;
+    
+    @Value("${openapi.cloudfront.url:}")
+    private String cloudfrontUrl;
+    
     @Autowired
     private Environment environment;
 
@@ -40,13 +49,15 @@ public class OpenApiConfig {
         
         // Add development server
         servers.add(new Server()
-                .url("http://localhost:" + serverPort)
+                .url(developmentServerUrl + ":" + serverPort)
                 .description("Development Server"));
         
-        // Add production server
-        servers.add(new Server()
-                .url("https://3.148.196.75:" + serverPort)
-                .description("Ubuntu Production Server"));
+        // Add production server if configured
+        if (productionServerUrl != null && !productionServerUrl.isEmpty()) {
+            servers.add(new Server()
+                    .url(productionServerUrl + ":" + serverPort)
+                    .description("Production Server"));
+        }
         
         // Add Lambda function URL if available
         if (lambdaFunctionUrl != null && !lambdaFunctionUrl.isEmpty()) {
@@ -55,10 +66,12 @@ public class OpenApiConfig {
                     .description("AWS Lambda Function"));
         }
         
-        // Add CloudFront distribution
-        servers.add(new Server()
-                .url("https://d3i4aa04ftrk87.cloudfront.net")
-                .description("CloudFront Distribution"));
+        // Add CloudFront distribution if configured
+        if (cloudfrontUrl != null && !cloudfrontUrl.isEmpty()) {
+            servers.add(new Server()
+                    .url(cloudfrontUrl)
+                    .description("CloudFront Distribution"));
+        }
         
         return new OpenAPI()
                 .info(new Info()

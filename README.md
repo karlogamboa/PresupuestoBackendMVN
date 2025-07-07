@@ -4,6 +4,12 @@ Este es el backend del sistema de gestión de presupuestos desarrollado con Spri
 
 ## Características Principales
 
+### 🚀 Despliegue y Escalabilidad
+- **AWS Lambda**: Función serverless optimizada con layers
+- **Lambda Layers**: Dependencias separadas para despliegues rápidos
+- **API Gateway**: Endpoints REST completamente configurados
+- **S3 Integration**: Almacenamiento de artefactos y logs
+
 ### 🔐 Autenticación y Autorización
 - **OAuth2/JWT**: Integración con Okta para autenticación
 - **Roles**: Sistema de roles Admin/User
@@ -134,19 +140,32 @@ spring.mail.password=your-smtp-password
    mvn spring-boot:run
    ```
 
-   **Opción B: AWS Lambda con SAM (Recomendado)**
+   **Opción B: AWS Lambda (Recomendado)**
+   ```bash
+   # Crear y configurar Lambda Layer (una vez)
+   ./aws-scripts/create-lambda-layer.sh
+   ./aws-scripts/update-lambda-with-layer.sh
+   
+   # Desplegar función optimizada
+   ./aws-scripts/deploy-lambda-with-layer.sh
+   ```
+
+   **Opción C: Helper Interactivo**
+   ```bash
+   # Linux/Mac
+   ./aws-scripts/layer-helper.sh
+   
+   # Windows
+   aws-scripts\layer-helper.bat
+   ```
+
+   **Opción D: AWS Lambda con SAM**
    ```bash
    # Instalar SAM CLI
    # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
    
    chmod +x deploy-sam.sh
    ./deploy-sam.sh
-   ```
-
-   **Opción C: AWS Lambda Manual**
-   ```bash
-   chmod +x deploy-lambda.sh
-   ./deploy-lambda.sh
    ```
 
 5. **Verificar instalación**

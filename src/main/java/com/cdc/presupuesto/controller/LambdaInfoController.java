@@ -13,7 +13,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*")
 @Tag(name = "Lambda Info", description = "Information about Lambda deployment and API documentation")
 public class LambdaInfoController {
 

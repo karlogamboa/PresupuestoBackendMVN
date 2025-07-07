@@ -20,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/categorias-gasto")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 public class CategoriaGastoController {
     private static final Logger logger = LoggerFactory.getLogger(CategoriaGastoController.class);
 

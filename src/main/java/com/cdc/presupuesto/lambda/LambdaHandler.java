@@ -10,10 +10,6 @@ import com.cdc.presupuesto.PresupuestoBackendApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * AWS Lambda Handler for Spring Boot Application
- * This handler allows the Spring Boot application to run on AWS Lambda
- */
 public class LambdaHandler implements RequestHandler<AwsProxyRequest, AwsProxyResponse> {
 
     private static final Logger logger = LoggerFactory.getLogger(LambdaHandler.class);

@@ -258,3 +258,4 @@ data/
 #scripts
 deploy-scripts/
 dynamodb-scripts/
+aws-scripts/

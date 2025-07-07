@@ -28,6 +28,9 @@ public class AuthController {
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
+    @Value("${okta.oauth2.fallback-redirect-uri:http://localhost:3000/callback}")
+    private String fallbackRedirectUri;
+
     @Value("${okta.oauth2.issuer}")
     private String issuer;
 
@@ -173,7 +176,7 @@ public class AuthController {
         tokenRequestBody.add("code", authCode);
         tokenRequestBody.add("client_id", clientId);
         tokenRequestBody.add("client_secret", clientSecret);
-        tokenRequestBody.add("redirect_uri", redirectUri != null ? redirectUri : "http://localhost:3000/callback");
+        tokenRequestBody.add("redirect_uri", redirectUri != null ? redirectUri : fallbackRedirectUri);
         if (codeVerifier != null && !codeVerifier.isEmpty()) {
             tokenRequestBody.add("code_verifier", codeVerifier);
         }
