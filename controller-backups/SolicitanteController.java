@@ -1,16 +1,14 @@
 package com.cdc.presupuesto.controller;
 
-import com.cdc.presupuesto.util.UserAuthUtils;
-
-import com.cdc.presupuesto.model.Departamento;
-import com.cdc.presupuesto.service.DepartamentoService;
+import com.cdc.presupuesto.model.Solicitante;
+import com.cdc.presupuesto.service.SolicitanteService;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,57 +16,58 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/departamentos")
-public class DepartamentoController {
-    private static final Logger logger = LoggerFactory.getLogger(DepartamentoController.class);
+@RequestMapping("/api/solicitantes")
+public class SolicitanteController {
+    private static final Logger logger = LoggerFactory.getLogger(SolicitanteController.class);
 
     @Autowired
-    private DepartamentoService departamentoService;
+    private SolicitanteService solicitanteService;
 
     @GetMapping
-    public ResponseEntity<List<Departamento>> getAllDepartamentos() {
-        List<Departamento> departamentos = departamentoService.getAllDepartamentos();
-        return ResponseEntity.ok(departamentos);
+    public ResponseEntity<List<Solicitante>> getAllSolicitantes(@AuthenticationPrincipal Jwt jwt) {
+        List<Solicitante> solicitantes = solicitanteService.getAllSolicitantes();
+        return ResponseEntity.ok(solicitantes);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Departamento> getDepartamentoById(@PathVariable String id) {
-        Departamento departamento = departamentoService.getDepartamentoById(id);
-        return departamento != null ? ResponseEntity.ok(departamento) : ResponseEntity.notFound().build();
+    @GetMapping("/{numEmpleado}")
+    public ResponseEntity<Solicitante> getSolicitanteByNumEmpleado(@PathVariable String numEmpleado,
+                                                                   @AuthenticationPrincipal Jwt jwt) {
+        Solicitante solicitante = solicitanteService.getSolicitanteByNumEmpleado(numEmpleado);
+        return solicitante != null ? ResponseEntity.ok(solicitante) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ResponseEntity<Departamento> createDepartamento(@RequestBody Departamento departamento) {
-        if (departamento.getId() == null || departamento.getId().isEmpty()) {
-            departamento.setId(UUID.randomUUID().toString());
-        }
-        Departamento created = departamentoService.saveDepartamento(departamento);
+    public ResponseEntity<Solicitante> createSolicitante(@RequestBody Solicitante solicitante,
+                                                        @AuthenticationPrincipal Jwt jwt) {
+        Solicitante created = solicitanteService.saveSolicitante(solicitante);
         return ResponseEntity.ok(created);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Departamento> updateDepartamento(@PathVariable String id, 
-                                                          @RequestBody Departamento departamento) {
-        departamento.setId(id);
-        Departamento updated = departamentoService.saveDepartamento(departamento);
+    @PutMapping("/{numEmpleado}")
+    public ResponseEntity<Solicitante> updateSolicitante(@PathVariable String numEmpleado, 
+                                                        @RequestBody Solicitante solicitante,
+                                                        @AuthenticationPrincipal Jwt jwt) {
+        solicitante.setNumEmpleado(numEmpleado);
+        Solicitante updated = solicitanteService.saveSolicitante(solicitante);
         return ResponseEntity.ok(updated);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartamento(@PathVariable String id) {
-        departamentoService.deleteDepartamento(id);
+    @DeleteMapping("/{numEmpleado}")
+    public ResponseEntity<Void> deleteSolicitante(@PathVariable String numEmpleado,
+                                                 @AuthenticationPrincipal Jwt jwt) {
+        solicitanteService.deleteSolicitante(numEmpleado);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/import-csv")
-    public ResponseEntity<Map<String, Object>> importDepartamentosFromCSV(
+    public ResponseEntity<Map<String, Object>> importSolicitantesFromCSV(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
+            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll,
+            @AuthenticationPrincipal Jwt jwt) {
         
-        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
+        logger.info("CSV import request received from user: {}", jwt.getSubject());
         
         try {
             // Validate file
@@ -88,7 +87,7 @@ public class DepartamentoController {
             }
             
             // Process CSV
-            Map<String, Object> result = departamentoService.importDepartamentosFromCSV(file, replaceAll);
+            Map<String, Object> result = solicitanteService.importSolicitantesFromCSV(file, replaceAll);
             
             if (Boolean.TRUE.equals(result.get("success"))) {
                 return ResponseEntity.ok(result);
@@ -117,9 +116,3 @@ public class DepartamentoController {
         }
     }
 }
-
-
-
-
-
-

@@ -83,7 +83,3 @@ public class LambdaInfoController {
         return ResponseEntity.ok(response);
     }
 }
-
-
-
-

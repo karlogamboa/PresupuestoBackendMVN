@@ -14,8 +14,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
@@ -28,7 +28,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/usuarios")
 @Tag(name = "Usuarios", description = "API para gestionar usuarios del sistema")
-@SecurityRequirement(name = "API Gateway Authentication")
+@SecurityRequirement(name = "JWT Authentication")
 public class UsuarioController {
 
     private static final Logger logger = LoggerFactory.getLogger(UsuarioController.class);
@@ -71,7 +71,8 @@ public class UsuarioController {
     })
     public ResponseEntity<Usuario> createUsuario(
             @Parameter(description = "Datos del nuevo usuario")
-            @RequestBody Usuario usuario) {
+            @RequestBody Usuario usuario,
+            @AuthenticationPrincipal Jwt jwt) {
         
         
         // Si no se especifica rol, asignar User por defecto
@@ -99,7 +100,8 @@ public class UsuarioController {
     public ResponseEntity<Usuario> updateUsuario(
             @PathVariable String email,
             @Parameter(description = "Datos actualizados del usuario")
-            @RequestBody Usuario usuario) {
+            @RequestBody Usuario usuario,
+            @AuthenticationPrincipal Jwt jwt) {
         
         Optional<Usuario> existingUsuario = usuarioRepository.findByEmail(email);
         if (existingUsuario.isEmpty()) {
@@ -154,12 +156,13 @@ public class UsuarioController {
         @ApiResponse(responseCode = "403", description = "Acceso denegado - Solo Admin")
     })
     public ResponseEntity<Map<String, Object>> importUsuariosFromCsv(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Importando usuarios desde CSV: {}", file.getOriginalFilename() != null ? file.getOriginalFilename() : "archivo_sin_nombre.csv");
             
             // Verificar que el usuario es Admin
-            if (!userInfoService.isCurrentUserAdmin()) {
+            if (!userInfoService.isAdmin(jwt)) {
                 logger.warn("Usuario no autorizado para importar usuarios");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("success", false, "message", "No autorizado - Solo Admin"));
@@ -178,12 +181,13 @@ public class UsuarioController {
             }
             
             // Importar usuarios
-            String resultado = userInfoService.importUsuariosFromCsv(file);
+            Map<String, Object> resultado = userInfoService.importUsuariosFromCsv(file);
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", resultado
-            ));
+            if ((Boolean) resultado.get("success")) {
+                return ResponseEntity.ok(resultado);
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resultado);
+            }
             
         } catch (Exception e) {
             logger.error("Error importando usuarios desde CSV: {}", e.getMessage(), e);
@@ -221,9 +225,3 @@ public class UsuarioController {
         }
     }
 }
-
-
-
-
-
-

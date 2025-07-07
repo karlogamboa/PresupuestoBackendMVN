@@ -3,7 +3,6 @@ package com.cdc.presupuesto.controller;
 import com.cdc.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.presupuesto.repository.SolicitudPresupuestoRepository;
 import com.cdc.presupuesto.service.UserInfoService;
-import com.cdc.presupuesto.util.UserAuthUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -13,8 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
 @Tag(name = "Solicitudes de Presupuesto", description = "API para gestionar solicitudes de presupuesto")
-@SecurityRequirement(name = "API Gateway Authentication")
+@SecurityRequirement(name = "JWT Authentication")
 public class SolicitudPresupuestoController {
 
     private static final Logger logger = LoggerFactory.getLogger(SolicitudPresupuestoController.class);
@@ -49,7 +48,7 @@ public class SolicitudPresupuestoController {
         @ApiResponse(responseCode = "401", description = "No autorizado"),
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
-    public ResponseEntity<List<SolicitudPresupuesto>> getAllSolicitudes() {
+    public ResponseEntity<List<SolicitudPresupuesto>> getAllSolicitudes(@AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Obteniendo todas las solicitudes de presupuesto");
             List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findAll();
@@ -72,7 +71,8 @@ public class SolicitudPresupuestoController {
     })
     public ResponseEntity<SolicitudPresupuesto> getSolicitudById(
             @PathVariable String id,
-            @RequestParam(required = false) String solicitudId) {
+            @RequestParam(required = false) String solicitudId,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Obteniendo solicitud con ID: {}", id);
             
@@ -107,13 +107,14 @@ public class SolicitudPresupuestoController {
     })
     public ResponseEntity<SolicitudPresupuesto> createSolicitud(
             @Parameter(description = "Datos de la nueva solicitud")
-            @RequestBody SolicitudPresupuesto solicitud) {
+            @RequestBody SolicitudPresupuesto solicitud,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Creando nueva solicitud de presupuesto");
             
             // Obtener información del usuario autenticado
-            Map<String, Object> userInfo = userInfoService.getCurrentUserInfo();
-            String userEmail = UserAuthUtils.getCurrentUserEmail();
+            Map<String, Object> userInfo = userInfoService.getUserInfo(jwt);
+            String userEmail = jwt.getClaim("email");
             
             // Generar ID único si no existe
             if (solicitud.getId() == null || solicitud.getId().isEmpty()) {
@@ -175,7 +176,8 @@ public class SolicitudPresupuestoController {
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId,
             @Parameter(description = "Datos actualizados de la solicitud")
-            @RequestBody SolicitudPresupuesto solicitud) {
+            @RequestBody SolicitudPresupuesto solicitud,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Actualizando solicitud con ID: {}", id);
             
@@ -223,7 +225,8 @@ public class SolicitudPresupuestoController {
     })
     public ResponseEntity<Map<String, String>> deleteSolicitud(
             @PathVariable String id,
-            @RequestParam(required = false) String solicitudId) {
+            @RequestParam(required = false) String solicitudId,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Eliminando solicitud con ID: {}", id);
             
@@ -259,7 +262,8 @@ public class SolicitudPresupuestoController {
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     public ResponseEntity<List<SolicitudPresupuesto>> getSolicitudesByEmpleado(
-            @PathVariable String numeroEmpleado) {
+            @PathVariable String numeroEmpleado,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Obteniendo solicitudes para empleado: {}", numeroEmpleado);
             List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findByNumEmpleado(numeroEmpleado);
@@ -284,12 +288,13 @@ public class SolicitudPresupuestoController {
     public ResponseEntity<Map<String, Object>> updateEstatus(
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId,
-            @RequestBody Map<String, String> estatusRequest) {
+            @RequestBody Map<String, String> estatusRequest,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             logger.info("Actualizando estatus de solicitud con ID: {}", id);
             
             // Verificar que el usuario es Admin
-            if (!userInfoService.isCurrentUserAdmin()) {
+            if (!userInfoService.isAdmin(jwt)) {
                 logger.warn("Usuario no autorizado para cambiar estatus de solicitud");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("success", false, "message", "No autorizado - Solo Admin"));
@@ -345,7 +350,8 @@ public class SolicitudPresupuestoController {
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     public ResponseEntity<Map<String, Object>> cambiarEstatus(
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
             String solicitudId = null;
             String nuevoEstatus = null;
@@ -371,7 +377,7 @@ public class SolicitudPresupuestoController {
             logger.info("Cambiando estatus de solicitud ID: {} a estatus: {}", solicitudId, nuevoEstatus);
             
             // Verificar que el usuario es Admin
-            if (!userInfoService.isCurrentUserAdmin()) {
+            if (!userInfoService.isAdmin(jwt)) {
                 logger.warn("Usuario no autorizado para cambiar estatus de solicitud");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("success", false, "message", "No autorizado - Solo Admin"));
@@ -422,9 +428,3 @@ public class SolicitudPresupuestoController {
         }
     }
 }
-
-
-
-
-
-

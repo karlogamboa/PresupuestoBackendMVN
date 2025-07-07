@@ -1,5 +1,7 @@
 package com.cdc.presupuesto.controller;
 
+import com.cdc.presupuesto.util.UserAuthUtils;
+
 import com.cdc.presupuesto.model.CategoriaGasto;
 import com.cdc.presupuesto.service.CategoriaGastoService;
 import com.opencsv.exceptions.CsvException;
@@ -7,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,21 +29,19 @@ public class CategoriaGastoController {
     private CategoriaGastoService categoriaGastoService;
 
     @GetMapping
-    public ResponseEntity<List<CategoriaGasto>> getAllCategorias(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<CategoriaGasto>> getAllCategorias() {
         List<CategoriaGasto> categorias = categoriaGastoService.getAllCategorias();
         return ResponseEntity.ok(categorias);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoriaGasto> getCategoriaById(@PathVariable String id,
-                                                          @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<CategoriaGasto> getCategoriaById(@PathVariable String id) {
         CategoriaGasto categoria = categoriaGastoService.getCategoriaById(id);
         return categoria != null ? ResponseEntity.ok(categoria) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ResponseEntity<CategoriaGasto> createCategoria(@RequestBody CategoriaGasto categoria,
-                                                         @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<CategoriaGasto> createCategoria(@RequestBody CategoriaGasto categoria) {
         if (categoria.getId() == null || categoria.getId().isEmpty()) {
             categoria.setId(UUID.randomUUID().toString());
         }
@@ -51,16 +51,14 @@ public class CategoriaGastoController {
 
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaGasto> updateCategoria(@PathVariable String id, 
-                                                         @RequestBody CategoriaGasto categoria,
-                                                         @AuthenticationPrincipal Jwt jwt) {
+                                                         @RequestBody CategoriaGasto categoria) {
         categoria.setId(id);
         CategoriaGasto updated = categoriaGastoService.saveCategoria(categoria);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategoria(@PathVariable String id,
-                                                @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Void> deleteCategoria(@PathVariable String id) {
         categoriaGastoService.deleteCategoria(id);
         return ResponseEntity.noContent().build();
     }
@@ -68,10 +66,9 @@ public class CategoriaGastoController {
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importCategoriasFromCSV(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
         
-        logger.info("CSV import request received from user: {}", jwt.getSubject());
+        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
         
         try {
             // Validate file
@@ -120,3 +117,9 @@ public class CategoriaGastoController {
         }
     }
 }
+
+
+
+
+
+

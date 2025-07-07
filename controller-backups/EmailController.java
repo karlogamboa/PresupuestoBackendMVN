@@ -3,6 +3,8 @@ package com.cdc.presupuesto.controller;
 import com.cdc.presupuesto.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.ses.model.SesException;
 
@@ -16,7 +18,8 @@ public class EmailController {
     private EmailService emailService;
 
     @PostMapping("/send")
-    public ResponseEntity<Map<String, String>> sendEmail(@RequestBody EmailRequest emailRequest) {
+    public ResponseEntity<Map<String, String>> sendEmail(@RequestBody EmailRequest emailRequest,
+                                                        @AuthenticationPrincipal Jwt jwt) {
         try {
             String messageId;
             
@@ -61,7 +64,8 @@ public class EmailController {
     }
 
     @PostMapping("/send-budget-notification")
-    public ResponseEntity<Map<String, String>> sendBudgetNotification(@RequestBody BudgetNotificationRequest request) {
+    public ResponseEntity<Map<String, String>> sendBudgetNotification(@RequestBody BudgetNotificationRequest request,
+                                                                      @AuthenticationPrincipal Jwt jwt) {
         try {
             emailService.sendBudgetRequestNotification(
                 request.getFrom(),
@@ -91,7 +95,8 @@ public class EmailController {
     }
 
     @PostMapping("/send-status-notification")
-    public ResponseEntity<Map<String, String>> sendStatusNotification(@RequestBody StatusNotificationRequest request) {
+    public ResponseEntity<Map<String, String>> sendStatusNotification(@RequestBody StatusNotificationRequest request,
+                                                                      @AuthenticationPrincipal Jwt jwt) {
         try {
             emailService.sendBudgetStatusNotification(
                 request.getFrom(),
@@ -193,7 +198,3 @@ public class EmailController {
         public void setComments(String comments) { this.comments = comments; }
     }
 }
-
-
-
-

@@ -1,10 +1,11 @@
 package com.cdc.presupuesto.controller;
 
 import com.cdc.presupuesto.service.UserInfoService;
-import com.cdc.presupuesto.util.UserAuthUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -48,97 +49,66 @@ public class AuthController {
     private UserInfoService userInfoService;
 
     @PostMapping("/api/userInfo")
-    public ResponseEntity<Map<String, Object>> getUserInfo() {
-        try {
-            // Obtener información del usuario desde el contexto de API Gateway
-            Map<String, Object> userInfo = userInfoService.getCurrentUserInfo();
-            
-            // Agregar información adicional del contexto de autenticación
-            String currentUserId = UserAuthUtils.getCurrentUserId();
-            String currentUserEmail = UserAuthUtils.getCurrentUserEmail();
-            String currentUserName = UserAuthUtils.getCurrentUserName();
-            
-            // Enriquecer la respuesta con información del contexto de autenticación
-            if (currentUserId != null) userInfo.put("sub", currentUserId);
-            if (currentUserEmail != null) userInfo.put("email", currentUserEmail);
-            if (currentUserName != null) userInfo.put("name", currentUserName);
-            
-            // Verificar si es administrador
-            boolean isAdmin = UserAuthUtils.hasRole("ADMIN") || UserAuthUtils.hasRole("ADMINISTRATOR");
-            userInfo.put("isAdmin", isAdmin);
-            
-            logger.debug("Usuario info obtenido para: {}", currentUserEmail);
-            
-            return ResponseEntity.ok(userInfo);
-        } catch (Exception e) {
-            logger.error("Error obteniendo información del usuario: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Error obteniendo información del usuario"));
-        }
+    public ResponseEntity<Map<String, Object>> getUserInfo(@AuthenticationPrincipal Jwt jwt) {
+        Map<String, Object> userInfo = new HashMap<>();
+        // userInfo.put("sub", jwt.getSubject());
+        // if (jwt.getClaim("email") != null) userInfo.put("email", jwt.getClaim("email"));
+        // if (jwt.getClaim("name") != null) userInfo.put("name", jwt.getClaim("name"));
+        // if (jwt.getClaim("preferred_username") != null) userInfo.put("preferred_username", jwt.getClaim("preferred_username"));
+        // if (jwt.getClaim("groups") != null) userInfo.put("groups", jwt.getClaim("groups"));
+        
+        // Agregar información de debug sobre claims disponibles
+        logger.debug("Claims disponibles en JWT: {}", jwt.getClaims().keySet());
+        
+        // Obtener información adicional del usuario desde DynamoDB
+        Map<String, Object> dynamoUserInfo = userInfoService.getUserInfo(jwt);
+        
+        // Agregar toda la información del usuario desde DynamoDB
+        userInfo.putAll(dynamoUserInfo);
+        
+        // Agregar roles como lista
+        String userRole = userInfoService.getUserRoles(jwt);
+        userInfo.put("role", userRole);
+        
+        return ResponseEntity.ok(userInfo);
     }
 
     /**
-     * Endpoint de debug para ver información de autenticación de API Gateway
+     * Endpoint de debug para ver todos los claims del JWT
      */
-    @PostMapping("/api/debug/auth-info")
-    public ResponseEntity<Map<String, Object>> getAuthInfo() {
+    @PostMapping("/api/debug/jwt-claims")
+    public ResponseEntity<Map<String, Object>> getJwtClaims(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> debugInfo = new HashMap<>();
+        debugInfo.put("allClaims", jwt.getClaims());
+        debugInfo.put("subject", jwt.getSubject());
+        debugInfo.put("issuedAt", jwt.getIssuedAt());
+        debugInfo.put("expiresAt", jwt.getExpiresAt());
+        debugInfo.put("headers", jwt.getHeaders());
         
-        try {
-            // Obtener información del contexto de autenticación de API Gateway
-            String userId = UserAuthUtils.getCurrentUserId();
-            String userEmail = UserAuthUtils.getCurrentUserEmail();
-            String userName = UserAuthUtils.getCurrentUserName();
-            List<String> roles = java.util.Arrays.asList(UserAuthUtils.hasRole("ADMIN") ? "ADMIN" : "USER");
-            
-            debugInfo.put("userId", userId);
-            debugInfo.put("userEmail", userEmail);
-            debugInfo.put("userName", userName);
-            debugInfo.put("roles", roles);
-            debugInfo.put("isAdmin", UserAuthUtils.hasRole("ADMIN"));
-            
-            // Obtener información adicional del contexto de Spring Security
-            org.springframework.security.core.Authentication auth = 
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            
-            if (auth != null) {
-                debugInfo.put("principalName", auth.getName());
-                debugInfo.put("principalType", auth.getPrincipal().getClass().getSimpleName());
-                debugInfo.put("authorities", auth.getAuthorities().toString());
-            }
-            
-            logger.info("Debug Auth Info - User: {}, Roles: {}", userEmail, roles);
-            
-            return ResponseEntity.ok(debugInfo);
-        } catch (Exception e) {
-            logger.error("Error obteniendo información de autenticación: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Error obteniendo información de autenticación"));
-        }
+        logger.info("Debug JWT Claims: {}", jwt.getClaims());
+        
+        return ResponseEntity.ok(debugInfo);
     }
 
     /**
      * Endpoint de debug para probar la búsqueda de usuario en DynamoDB
      */
     @PostMapping("/api/debug/user-lookup")
-    public ResponseEntity<Map<String, Object>> debugUserLookup() {
+    public ResponseEntity<Map<String, Object>> debugUserLookup(@AuthenticationPrincipal Jwt jwt) {
         Map<String, Object> debugInfo = new HashMap<>();
         
         try {
-            // Obtener información del usuario desde API Gateway context
-            Map<String, Object> userInfo = userInfoService.getCurrentUserInfo();
-            boolean isAdmin = userInfoService.isCurrentUserAdmin();
-            
-            String currentUserEmail = UserAuthUtils.getCurrentUserEmail();
-            String currentUserId = UserAuthUtils.getCurrentUserId();
+            // Obtener información del usuario
+            Map<String, Object> userInfo = userInfoService.getUserInfo(jwt);
+            String userRole = userInfoService.getUserRoles(jwt);
+            boolean isAdmin = userInfoService.isAdmin(jwt);
             
             debugInfo.put("userInfoFromDynamoDB", userInfo);
+            debugInfo.put("userRoles", List.of(userRole));
             debugInfo.put("isAdmin", isAdmin);
-            debugInfo.put("currentUserEmail", currentUserEmail);
-            debugInfo.put("currentUserId", currentUserId);
-            debugInfo.put("authenticationContext", "API Gateway");
+            debugInfo.put("jwtClaims", jwt.getClaims());
             
-            logger.info("Debug User Lookup: userInfo={}, isAdmin={}, email={}", userInfo, isAdmin, currentUserEmail);
+            logger.info("Debug User Lookup: userInfo={}, roles={}, isAdmin={}", userInfo, userRole, isAdmin);
             
         } catch (Exception e) {
             debugInfo.put("error", e.getMessage());
@@ -312,8 +282,3 @@ public class AuthController {
             .body(config);
     }
 }
-
-
-
-
-

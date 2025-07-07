@@ -1,5 +1,7 @@
 package com.cdc.presupuesto.controller;
 
+import com.cdc.presupuesto.util.UserAuthUtils;
+
 import com.cdc.presupuesto.model.Proveedor;
 import com.cdc.presupuesto.service.ProveedorService;
 import com.opencsv.exceptions.CsvException;
@@ -7,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,21 +29,19 @@ public class ProveedorController {
     private ProveedorService proveedorService;
 
     @GetMapping
-    public ResponseEntity<List<Proveedor>> getAllProveedores(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<Proveedor>> getAllProveedores() {
         List<Proveedor> proveedores = proveedorService.getAllProveedores();
         return ResponseEntity.ok(proveedores);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Proveedor> getProveedorById(@PathVariable String id,
-                                                     @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Proveedor> getProveedorById(@PathVariable String id) {
         Proveedor proveedor = proveedorService.getProveedorById(id);
         return proveedor != null ? ResponseEntity.ok(proveedor) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ResponseEntity<Proveedor> createProveedor(@RequestBody Proveedor proveedor,
-                                                     @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Proveedor> createProveedor(@RequestBody Proveedor proveedor) {
         if (proveedor.getId() == null || proveedor.getId().isEmpty()) {
             proveedor.setId(UUID.randomUUID().toString());
         }
@@ -50,16 +50,14 @@ public class ProveedorController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Proveedor> updateProveedor(@PathVariable String id, @RequestBody Proveedor proveedor,
-                                                     @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Proveedor> updateProveedor(@PathVariable String id, @RequestBody Proveedor proveedor) {
         proveedor.setId(id);
         Proveedor updated = proveedorService.saveProveedor(proveedor);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProveedor(@PathVariable String id,
-                                                @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Void> deleteProveedor(@PathVariable String id) {
         proveedorService.deleteProveedor(id);
         return ResponseEntity.noContent().build();
     }
@@ -67,10 +65,9 @@ public class ProveedorController {
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importProveedoresFromCSV(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
         
-        logger.info("CSV import request received from user: {}", jwt.getSubject());
+        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
         
         try {
             // Validate file
@@ -119,3 +116,9 @@ public class ProveedorController {
         }
     }
 }
+
+
+
+
+
+

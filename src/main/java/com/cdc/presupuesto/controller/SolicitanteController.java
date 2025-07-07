@@ -1,5 +1,7 @@
 package com.cdc.presupuesto.controller;
 
+import com.cdc.presupuesto.util.UserAuthUtils;
+
 import com.cdc.presupuesto.model.Solicitante;
 import com.cdc.presupuesto.service.SolicitanteService;
 import com.opencsv.exceptions.CsvException;
@@ -7,8 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,37 +28,33 @@ public class SolicitanteController {
     private SolicitanteService solicitanteService;
 
     @GetMapping
-    public ResponseEntity<List<Solicitante>> getAllSolicitantes(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<List<Solicitante>> getAllSolicitantes() {
         List<Solicitante> solicitantes = solicitanteService.getAllSolicitantes();
         return ResponseEntity.ok(solicitantes);
     }
 
     @GetMapping("/{numEmpleado}")
-    public ResponseEntity<Solicitante> getSolicitanteByNumEmpleado(@PathVariable String numEmpleado,
-                                                                   @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Solicitante> getSolicitanteByNumEmpleado(@PathVariable String numEmpleado) {
         Solicitante solicitante = solicitanteService.getSolicitanteByNumEmpleado(numEmpleado);
         return solicitante != null ? ResponseEntity.ok(solicitante) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ResponseEntity<Solicitante> createSolicitante(@RequestBody Solicitante solicitante,
-                                                        @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Solicitante> createSolicitante(@RequestBody Solicitante solicitante) {
         Solicitante created = solicitanteService.saveSolicitante(solicitante);
         return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{numEmpleado}")
     public ResponseEntity<Solicitante> updateSolicitante(@PathVariable String numEmpleado, 
-                                                        @RequestBody Solicitante solicitante,
-                                                        @AuthenticationPrincipal Jwt jwt) {
+                                                        @RequestBody Solicitante solicitante) {
         solicitante.setNumEmpleado(numEmpleado);
         Solicitante updated = solicitanteService.saveSolicitante(solicitante);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{numEmpleado}")
-    public ResponseEntity<Void> deleteSolicitante(@PathVariable String numEmpleado,
-                                                 @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Void> deleteSolicitante(@PathVariable String numEmpleado) {
         solicitanteService.deleteSolicitante(numEmpleado);
         return ResponseEntity.noContent().build();
     }
@@ -64,10 +62,9 @@ public class SolicitanteController {
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importSolicitantesFromCSV(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
         
-        logger.info("CSV import request received from user: {}", jwt.getSubject());
+        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
         
         try {
             // Validate file
@@ -116,3 +113,9 @@ public class SolicitanteController {
         }
     }
 }
+
+
+
+
+
+

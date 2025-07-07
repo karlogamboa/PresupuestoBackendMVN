@@ -1,16 +1,14 @@
 package com.cdc.presupuesto.controller;
 
-import com.cdc.presupuesto.util.UserAuthUtils;
-
-import com.cdc.presupuesto.model.Departamento;
-import com.cdc.presupuesto.service.DepartamentoService;
+import com.cdc.presupuesto.model.CategoriaGasto;
+import com.cdc.presupuesto.service.CategoriaGastoService;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,54 +19,59 @@ import java.util.HashMap;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/departamentos")
-public class DepartamentoController {
-    private static final Logger logger = LoggerFactory.getLogger(DepartamentoController.class);
+@RequestMapping("/api/categorias-gasto")
+public class CategoriaGastoController {
+    private static final Logger logger = LoggerFactory.getLogger(CategoriaGastoController.class);
 
     @Autowired
-    private DepartamentoService departamentoService;
+    private CategoriaGastoService categoriaGastoService;
 
     @GetMapping
-    public ResponseEntity<List<Departamento>> getAllDepartamentos() {
-        List<Departamento> departamentos = departamentoService.getAllDepartamentos();
-        return ResponseEntity.ok(departamentos);
+    public ResponseEntity<List<CategoriaGasto>> getAllCategorias(@AuthenticationPrincipal Jwt jwt) {
+        List<CategoriaGasto> categorias = categoriaGastoService.getAllCategorias();
+        return ResponseEntity.ok(categorias);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Departamento> getDepartamentoById(@PathVariable String id) {
-        Departamento departamento = departamentoService.getDepartamentoById(id);
-        return departamento != null ? ResponseEntity.ok(departamento) : ResponseEntity.notFound().build();
+    public ResponseEntity<CategoriaGasto> getCategoriaById(@PathVariable String id,
+                                                          @AuthenticationPrincipal Jwt jwt) {
+        CategoriaGasto categoria = categoriaGastoService.getCategoriaById(id);
+        return categoria != null ? ResponseEntity.ok(categoria) : ResponseEntity.notFound().build();
     }
 
     @PostMapping
-    public ResponseEntity<Departamento> createDepartamento(@RequestBody Departamento departamento) {
-        if (departamento.getId() == null || departamento.getId().isEmpty()) {
-            departamento.setId(UUID.randomUUID().toString());
+    public ResponseEntity<CategoriaGasto> createCategoria(@RequestBody CategoriaGasto categoria,
+                                                         @AuthenticationPrincipal Jwt jwt) {
+        if (categoria.getId() == null || categoria.getId().isEmpty()) {
+            categoria.setId(UUID.randomUUID().toString());
         }
-        Departamento created = departamentoService.saveDepartamento(departamento);
+        CategoriaGasto created = categoriaGastoService.saveCategoria(categoria);
         return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Departamento> updateDepartamento(@PathVariable String id, 
-                                                          @RequestBody Departamento departamento) {
-        departamento.setId(id);
-        Departamento updated = departamentoService.saveDepartamento(departamento);
+    public ResponseEntity<CategoriaGasto> updateCategoria(@PathVariable String id, 
+                                                         @RequestBody CategoriaGasto categoria,
+                                                         @AuthenticationPrincipal Jwt jwt) {
+        categoria.setId(id);
+        CategoriaGasto updated = categoriaGastoService.saveCategoria(categoria);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartamento(@PathVariable String id) {
-        departamentoService.deleteDepartamento(id);
+    public ResponseEntity<Void> deleteCategoria(@PathVariable String id,
+                                                @AuthenticationPrincipal Jwt jwt) {
+        categoriaGastoService.deleteCategoria(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/import-csv")
-    public ResponseEntity<Map<String, Object>> importDepartamentosFromCSV(
+    public ResponseEntity<Map<String, Object>> importCategoriasFromCSV(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
+            @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll,
+            @AuthenticationPrincipal Jwt jwt) {
         
-        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
+        logger.info("CSV import request received from user: {}", jwt.getSubject());
         
         try {
             // Validate file
@@ -88,7 +91,7 @@ public class DepartamentoController {
             }
             
             // Process CSV
-            Map<String, Object> result = departamentoService.importDepartamentosFromCSV(file, replaceAll);
+            Map<String, Object> result = categoriaGastoService.importCategoriasFromCSV(file, replaceAll);
             
             if (Boolean.TRUE.equals(result.get("success"))) {
                 return ResponseEntity.ok(result);
@@ -117,9 +120,3 @@ public class DepartamentoController {
         }
     }
 }
-
-
-
-
-
-
