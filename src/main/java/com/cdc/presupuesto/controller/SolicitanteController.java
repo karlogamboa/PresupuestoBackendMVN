@@ -32,33 +32,6 @@ public class SolicitanteController {
         List<Solicitante> solicitantes = solicitanteService.getAllSolicitantes();
         return ResponseEntity.ok(solicitantes);
     }
-
-    @GetMapping("/{numEmpleado}")
-    public ResponseEntity<Solicitante> getSolicitanteByNumEmpleado(@PathVariable String numEmpleado) {
-        Solicitante solicitante = solicitanteService.getSolicitanteByNumEmpleado(numEmpleado);
-        return solicitante != null ? ResponseEntity.ok(solicitante) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<Solicitante> createSolicitante(@RequestBody Solicitante solicitante) {
-        Solicitante created = solicitanteService.saveSolicitante(solicitante);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{numEmpleado}")
-    public ResponseEntity<Solicitante> updateSolicitante(@PathVariable String numEmpleado, 
-                                                        @RequestBody Solicitante solicitante) {
-        solicitante.setNumEmpleado(numEmpleado);
-        Solicitante updated = solicitanteService.saveSolicitante(solicitante);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{numEmpleado}")
-    public ResponseEntity<Void> deleteSolicitante(@PathVariable String numEmpleado) {
-        solicitanteService.deleteSolicitante(numEmpleado);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importSolicitantesFromCSV(
             @RequestParam("file") MultipartFile file,

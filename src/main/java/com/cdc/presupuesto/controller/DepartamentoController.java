@@ -34,35 +34,6 @@ public class DepartamentoController {
         return ResponseEntity.ok(departamentos);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Departamento> getDepartamentoById(@PathVariable String id) {
-        Departamento departamento = departamentoService.getDepartamentoById(id);
-        return departamento != null ? ResponseEntity.ok(departamento) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<Departamento> createDepartamento(@RequestBody Departamento departamento) {
-        if (departamento.getId() == null || departamento.getId().isEmpty()) {
-            departamento.setId(UUID.randomUUID().toString());
-        }
-        Departamento created = departamentoService.saveDepartamento(departamento);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Departamento> updateDepartamento(@PathVariable String id, 
-                                                          @RequestBody Departamento departamento) {
-        departamento.setId(id);
-        Departamento updated = departamentoService.saveDepartamento(departamento);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartamento(@PathVariable String id) {
-        departamentoService.deleteDepartamento(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importDepartamentosFromCSV(
             @RequestParam("file") MultipartFile file,

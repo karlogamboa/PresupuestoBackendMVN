@@ -33,36 +33,6 @@ public class CategoriaGastoController {
         List<CategoriaGasto> categorias = categoriaGastoService.getAllCategorias();
         return ResponseEntity.ok(categorias);
     }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<CategoriaGasto> getCategoriaById(@PathVariable String id) {
-        CategoriaGasto categoria = categoriaGastoService.getCategoriaById(id);
-        return categoria != null ? ResponseEntity.ok(categoria) : ResponseEntity.notFound().build();
-    }
-
-    @PostMapping
-    public ResponseEntity<CategoriaGasto> createCategoria(@RequestBody CategoriaGasto categoria) {
-        if (categoria.getId() == null || categoria.getId().isEmpty()) {
-            categoria.setId(UUID.randomUUID().toString());
-        }
-        CategoriaGasto created = categoriaGastoService.saveCategoria(categoria);
-        return ResponseEntity.ok(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<CategoriaGasto> updateCategoria(@PathVariable String id, 
-                                                         @RequestBody CategoriaGasto categoria) {
-        categoria.setId(id);
-        CategoriaGasto updated = categoriaGastoService.saveCategoria(categoria);
-        return ResponseEntity.ok(updated);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategoria(@PathVariable String id) {
-        categoriaGastoService.deleteCategoria(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importCategoriasFromCSV(
             @RequestParam("file") MultipartFile file,
