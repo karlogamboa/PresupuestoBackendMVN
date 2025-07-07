@@ -41,6 +41,7 @@ public class SolicitudPresupuestoController {
     @Autowired
     private UserInfoService userInfoService;
 
+
     @GetMapping
     @Operation(summary = "Obtener todas las solicitudes de presupuesto", 
                description = "Obtiene la lista de todas las solicitudes de presupuesto")
