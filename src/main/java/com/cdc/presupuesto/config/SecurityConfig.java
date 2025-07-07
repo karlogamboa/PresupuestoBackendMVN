@@ -37,18 +37,22 @@ public class SecurityConfig {
                 .requestMatchers("/health", "/api/okta-config", "/api/exchange-token").permitAll()
                 // Swagger UI endpoints - public access for development
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                // All API endpoints require authentication
-                .requestMatchers("/api/**").authenticated()
+                // All API endpoints require authentication - now handled by API Gateway JWT Authorizer
+                .requestMatchers("/api/**").permitAll() // Changed from .authenticated() to .permitAll() since auth is handled by API Gateway
                 // Any other request requires authentication
-                .anyRequest().authenticated()
-            )
+                .anyRequest().permitAll() // Changed from .authenticated() to .permitAll()
+            );
+            // Comment out JWT configuration since it's now handled by API Gateway
+            /* 
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> {}) // Use default JWT configuration from application.properties
             );
+            */
 
         return http.build();
     }
 
+    // Keep CORS configuration as Lambda/API Gateway will still need it
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
