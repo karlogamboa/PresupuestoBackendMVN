@@ -235,7 +235,7 @@ docker-compose.override.yml
 
 # Local environment variables for different profiles
 .env.lambda
-.env.ec2
+.env.local
 .env.test
 
 # IDE specific Spring Boot configurations

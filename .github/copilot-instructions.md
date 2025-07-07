@@ -5,8 +5,9 @@ This is a Spring Boot Java project for a budget management system with the follo
 ## Project Structure
 - **Backend**: Java Spring Boot application with Maven
 - **Database**: AWS DynamoDB for data persistence
-- **Authentication**: Okta OAuth2/JWT integration
-- **Email**: Spring Mail for email notifications
+- **Authentication**: API Gateway Authorizer (Lambda-based)
+- **Email**: Amazon SES for email notifications
+- **Deployment**: AWS Lambda with API Gateway
 
 ## Key Components
 - **Models**: Entity classes for SolicitudPresupuesto, Area, Departamento, Subdepartamento, Proveedor, CategoriaGasto, Solicitante
@@ -27,10 +28,9 @@ This is a Spring Boot Java project for a budget management system with the follo
 - `/api/emails/send` - Email sending functionality
 - `/api/emails/send-budget-notification` - Send budget request notifications
 - `/api/emails/send-status-notification` - Send status update notifications
-- `/api/exchange-token` - Token exchange
-- `/api/userInfo` - User information from JWT
+- `/api/userInfo` - User information from API Gateway Authorizer
 - `/api/logout` - Logout functionality
-- `/api/okta-config` - Okta configuration
+- `/api/debug/**` - Debug endpoints for testing
 - `/health` - Health check endpoint
 
 ## Code Conventions
@@ -38,7 +38,8 @@ This is a Spring Boot Java project for a budget management system with the follo
 - Follow RESTful API design principles
 - Use DynamoDB Enhanced Client for database operations
 - Implement proper error handling and logging
-- Use JWT for authentication and authorization
+- Use API Gateway Authorizer for authentication and authorization
 - Implement role-based access control (Admin role for status changes)
 - Use Amazon SES for email notifications with automatic integration
 - Follow Java naming conventions and best practices
+- Design for AWS Lambda execution (stateless, optimized for cold starts)

@@ -82,8 +82,8 @@ public class OpenApiConfig {
         boolean showJwtSecurity = authEnabled && isLambdaProfile;
         
         String apiDescription = "API for Budget Management System CDC - Sistema de Gestión de Presupuestos\n\n" +
-                               "Esta API permite gestionar solicitudes de presupuesto, usuarios, áreas, departamentos y más.\n" +
-                               "Disponible tanto en EC2 como en AWS Lambda para máxima flexibilidad.\n\n";
+                               "Esta API está diseñada para ejecutarse en AWS Lambda con API Gateway.\n" +
+                               "Incluye gestión de solicitudes de presupuesto, usuarios, áreas, departamentos y más.\n\n";
         
         if (!authEnabled) {
             apiDescription += "⚠️ **MODO DE PRUEBA**: Autenticación deshabilitada. Todas las APIs son de acceso libre.\n\n";

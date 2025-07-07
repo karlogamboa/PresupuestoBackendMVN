@@ -1,24 +1,24 @@
 # Sistema de Gestión de Presupuestos - Backend
 
-Este es el backend del sistema de gestión de presupuestos desarrollado con Spring Boot, que incluye integración con AWS DynamoDB, autenticación OAuth2 con Okta, y funcionalidad completa de gestión de usuarios con importación CSV.
+Este es el backend del sistema de gestión de presupuestos desarrollado con Spring Boot para AWS Lambda, que incluye integración con AWS DynamoDB, autenticación via API Gateway Authorizer, y funcionalidad completa de gestión de presupuestos.
 
 ## Características Principales
 
-### 🚀 Despliegue y Escalabilidad
-- **AWS Lambda**: Función serverless optimizada con layers
-- **Lambda Layers**: Dependencias separadas para despliegues rápidos
-- **API Gateway**: Endpoints REST completamente configurados
-- **S3 Integration**: Almacenamiento de artefactos y logs
+### 🚀 Arquitectura Lambda-First
+- **AWS Lambda**: Función serverless optimizada con cold start mínimo
+- **API Gateway**: Endpoints REST con autenticación integrada
+- **DynamoDB**: Base de datos NoSQL completamente gestionada
+- **Parameter Store**: Configuración dinámica por ambiente
 
 ### 🔐 Autenticación y Autorización
-- **OAuth2/JWT**: Integración con Okta para autenticación
-- **Roles**: Sistema de roles Admin/User
-- **Información de usuarios**: Almacenada en DynamoDB (no en JWT)
+- **API Gateway Authorizer**: Autenticación a nivel de gateway
+- **Roles**: Sistema de roles Admin/User via headers
+- **Sin estado**: Diseño completamente stateless para Lambda
 
-### 👥 Gestión de Usuarios
-- **CRUD completo**: Crear, leer, actualizar, eliminar usuarios
-- **Importación CSV**: Importación masiva de usuarios desde archivos CSV
-- **Validaciones**: Email único, roles válidos, campos requeridos
+### 👥 Gestión de Solicitantes
+- **CRUD completo**: Crear, leer, actualizar, eliminar solicitantes
+- **Importación CSV**: Importación masiva desde archivos CSV
+- **Validaciones**: Email único, datos consistentes
 - **Template CSV**: Descarga de template para importación
 
 ### 💰 Gestión de Presupuestos
@@ -27,10 +27,11 @@ Este es el backend del sistema de gestión de presupuestos desarrollado con Spri
 - **Proveedores**: Gestión de proveedores y categorías de gasto
 - **Notificaciones**: Envío automático de emails via Amazon SES
 
-### 📊 Base de Datos
-- **DynamoDB**: Almacenamiento NoSQL en AWS
-- **Tablas**: usuarios, solicitudes-presupuesto, areas, departamentos, etc.
-- **Enhanced Client**: Uso de DynamoDB Enhanced Client para operaciones
+### 📊 Base de Datos y Configuración
+- **DynamoDB**: Almacenamiento NoSQL con prefijos por ambiente
+- **Tablas Dinámicas**: Prefijos configurables (dev/qa/prod)
+- **Enhanced Client**: DynamoDB Enhanced Client para operaciones optimizadas
+- **Parameter Store**: Configuración centralizada y dinámica
 
 ## Estructura del Proyecto
 
@@ -46,60 +47,68 @@ src/main/java/com/cdc/presupuesto/
 
 ## Endpoints Principales
 
-### Autenticación
-- `POST /api/userInfo` - Información del usuario autenticado
-- `POST /api/exchange-token` - Intercambio de tokens OAuth2
-- `POST /api/logout` - Cerrar sesión
-- `GET /api/okta-config` - Configuración de Okta
+### Autenticación y Configuración
+- `POST /api/userInfo` - Información del usuario autenticado via API Gateway
+- `POST /api/debug/auth-info` - Debug de información de autenticación
+- `GET /api/auth-config` - Configuración de autenticación
+- `POST /api/logout` - Logout (retorna confirmación)
 
-### Gestión de Usuarios
-- `GET /api/usuarios` - Listar todos los usuarios (Admin)
-- `GET /api/usuarios/{id}` - Obtener usuario por ID
-- `POST /api/usuarios` - Crear nuevo usuario (Admin)
-- `PUT /api/usuarios/{id}` - Actualizar usuario (Admin)
-- `DELETE /api/usuarios/{id}` - Eliminar usuario (Admin)
-- `POST /api/usuarios/import-csv` - Importar usuarios desde CSV (Admin)
-- `GET /api/usuarios/csv-template` - Descargar template CSV
+### Gestión de Solicitantes
+- `GET /api/solicitantes` - Listar todos los solicitantes
+- `POST /api/solicitantes` - Crear nuevo solicitante
+- `PUT /api/solicitantes/{id}` - Actualizar solicitante
+- `DELETE /api/solicitantes/{id}` - Eliminar solicitante
+- `POST /api/solicitantes/import-csv` - Importar solicitantes desde CSV
 
-### Solicitudes de Presupuesto
+### Gestión de Solicitudes de Presupuesto
 - `GET /api/solicitudes-presupuesto` - Listar solicitudes
 - `POST /api/solicitudes-presupuesto` - Crear nueva solicitud
 - `PUT /api/solicitudes-presupuesto/{id}` - Actualizar solicitud
 - `DELETE /api/solicitudes-presupuesto/{id}` - Eliminar solicitud
 
-### Otros
-- `GET /api/areas` - Gestión de áreas
-- `GET /api/departamentos` - Gestión de departamentos
-- `GET /api/proveedores` - Gestión de proveedores
-- `GET /api/categorias-gasto` - Categorías de gasto
+### Gestión Organizacional
+- `GET /api/areas` - Listar áreas
+- `GET /api/departamentos` - Listar departamentos
+- `GET /api/subdepartamentos` - Listar subdepartamentos (filtrable por área)
+- `GET /api/proveedores` - Listar proveedores
+- `GET /api/categorias-gasto` - Listar categorías de gasto
+
+### Resultados y Administración
+- `GET /api/resultados` - Obtener resultados (filtrable por empleado)
+- `POST /api/resultados/editar-estatus` - Cambiar estatus (solo Admin)
+
+### Email Notifications
+- `POST /api/emails/send` - Enviar email genérico
+- `POST /api/emails/send-budget-notification` - Notificación de presupuesto
+- `POST /api/emails/send-status-notification` - Notificación de cambio de estatus
+
+### Utilidades
 - `GET /health` - Health check
+- `GET /v3/api-docs` - Documentación OpenAPI
+- `GET /swagger-ui.html` - Interfaz Swagger UI
 
-## Configuración
+## Configuración de Ambientes
 
-### Variables de Entorno
+### Variables de Entorno para Lambda
 ```properties
-# AWS
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
+# Ambiente (dev/qa/prod)
+ENVIRONMENT=qa
+SPRING_PROFILES_ACTIVE=lambda,qa
+AWS_REGION=us-east-2
 
-# DynamoDB
-aws.dynamodb.table-prefix=presupuesto-
+# Configuración automática via Parameter Store
+# /fin/{ENVIRONMENT}/presupuesto/...
+```
 
-# Okta
-okta.oauth2.issuer=https://your-domain.okta.com/oauth2/default
-okta.oauth2.client-id=your-client-id
-okta.oauth2.client-secret=your-client-secret
-okta.oauth2.audience=api://default
+### Configuración por Parameter Store
+El sistema usa AWS Parameter Store para configuración dinámica:
 
-# CORS
-cors.allowed-origins=http://localhost:3000,https://your-frontend.com
-
-# Email
-spring.mail.host=email-smtp.us-east-1.amazonaws.com
-spring.mail.port=587
-spring.mail.username=your-smtp-username
-spring.mail.password=your-smtp-password
+```
+/fin/qa/presupuesto/aws/region
+/fin/qa/presupuesto/aws/dynamodb/table/prefix
+/fin/qa/presupuesto/cors/allowed-origins
+/fin/qa/presupuesto/security/auth/enabled
+# ... más parámetros según ENVIRONMENT-CONFIGURATION.md
 ```
 
 ## Instalación y Ejecución
@@ -108,46 +117,50 @@ spring.mail.password=your-smtp-password
 - Java 17+
 - Maven 3.6+
 - Cuenta AWS con acceso a DynamoDB y SES
-- Cuenta Okta configurada
+- AWS CLI configurado
 - **Para Lambda**: AWS SAM CLI (recomendado) o AWS CLI
 
-### Pasos
+### Pasos de Despliegue
+
 1. **Clonar el repositorio**
    ```bash
    git clone <repository-url>
    cd PresupuestoBackendMVN
    ```
 
-2. **Configurar variables de entorno**
+2. **Configurar Parameter Store**
    ```bash
-   # Editar application.properties o usar variables de entorno
+   # Configurar parámetros por ambiente
+   ENVIRONMENT=qa ./aws-scripts/create-parameter-store.sh
+   # o en Windows
+   set ENVIRONMENT=qa && aws-scripts\create-parameter-store.bat
    ```
 
 3. **Crear tablas en DynamoDB**
    ```bash
-   # Ejecutar scripts en dynamodb-scripts/
-   chmod +x dynamodb-scripts/*.sh
-   ./dynamodb-scripts/create-usuarios-aws.sh
-   ./dynamodb-scripts/create-solicitudes-presupuesto-aws.sh
-   # ... otros scripts
+   # Ejecutar scripts con prefijo de ambiente
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-solicitudes-presupuesto-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-solicitantes-aws.sh
+   # ... otros scripts según necesidad
    ```
 
-4. **Deployment - Elegir una opción:**
-
-   **Opción A: EC2 Tradicional**
+4. **Compilar y Desplegar en Lambda**
    ```bash
-   mvn clean install
-   mvn spring-boot:run
-   ```
-
-   **Opción B: AWS Lambda (Recomendado)**
-   ```bash
-   # Crear y configurar Lambda Layer (una vez)
-   ./aws-scripts/create-lambda-layer.sh
-   ./aws-scripts/update-lambda-with-layer.sh
+   # Compilar para Lambda
+   mvn clean package
    
-   # Desplegar función optimizada
-   ./aws-scripts/deploy-lambda-with-layer.sh
+   # Desplegar función Lambda (configurar según tu setup)
+   aws lambda update-function-code --function-name presupuesto-backend-qa \
+     --zip-file fileb://target/presupuesto-backend-1.0.0-SNAPSHOT-aws.jar
+   ```
+
+### Desarrollo Local (Opcional)
+Para desarrollo y pruebas locales:
+```bash
+# Perfil de desarrollo sin autenticación
+java -jar target/presupuesto-backend.jar --spring.profiles.active=dev
+# Acceder a http://localhost:8080
+```
    ```
 
    **Opción C: Helper Interactivo**
@@ -169,16 +182,12 @@ spring.mail.password=your-smtp-password
    ```
 
 5. **Verificar instalación**
-   
-   **EC2:**
    ```bash
-   curl https://localhost:8443/health
-   ```
+   # Verificar health check en API Gateway
+   curl https://your-api-gateway-url/health
    
-   **Lambda:**
-   ```bash
-   # URL será proporcionada después del deployment
-   curl https://your-api-gateway-url.execute-api.us-east-2.amazonaws.com/dev/health
+   # Ver logs de Lambda
+   aws logs tail /aws/lambda/presupuesto-backend-qa --follow
    ```
 
 ## Uso de Importación CSV
@@ -256,134 +265,79 @@ curl -X POST \
 
 ## Seguridad
 
-### Autenticación
-- JWT tokens válidos requeridos para todas las operaciones
-- Verificación de roles para operaciones administrativas
+### Autenticación via API Gateway
+- Headers de usuario válidos requeridos para todas las operaciones
+- Verificación de roles para operaciones administrativas via `x-user-roles`
 
 ### Autorización
-- **Admin**: Acceso completo a gestión de usuarios y cambio de estatus
+- **Admin**: Acceso completo a gestión y cambio de estatus
 - **User**: Acceso a crear solicitudes y ver propias solicitudes
 
 ### Validaciones
-- Validación de emails únicos
+- Validación de emails únicos en solicitantes
 - Validación de roles válidos
 - Sanitización de datos de entrada
+- Headers de contexto de usuario desde API Gateway
 
 ## Monitoreo y Logs
 
 ### Health Check
 ```bash
+# En API Gateway URL
+curl https://your-api-gateway-url/health
+
+# Para desarrollo local
 curl http://localhost:8080/health
 ```
 
-### Logs
-- Logs detallados de todas las operaciones
-- Información de importaciones CSV
-- Errores y warnings para debugging
-
-## Deployment
-
-### Desarrollo Local
+### Testing y Validación
 ```bash
-mvn spring-boot:run
+# Verificar health check
+curl https://your-api-gateway-url/health
+
+# Ver logs en CloudWatch
+aws logs tail /aws/lambda/presupuesto-backend-qa --follow
+
+# Probar endpoints
+curl -X POST https://your-api-gateway-url/api/userInfo \
+  -H "x-user-id: test@example.com" \
+  -H "x-user-roles: Admin"
 ```
 
-### EC2 Tradicional
-```bash
-mvn clean package
-java -jar target/presupuesto-backend-1.0.0-SNAPSHOT.jar
-```
+### Logs y Monitoreo
+- **CloudWatch Logs**: `/aws/lambda/presupuesto-backend-{environment}`
+- **Metrics**: Duración, errores, cold starts automáticamente en CloudWatch
+- **X-Ray**: Tracing distribuido (opcional, configurable)
+- **API Gateway Logs**: Request/response logging configurado por ambiente
 
-### AWS Lambda con SAM CLI (Recomendado)
-```bash
-# Instalar SAM CLI primero
-# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+## Arquitectura Lambda-First
 
-# Deployment automático
-./deploy-sam.sh        # Linux/macOS
-deploy-sam.bat         # Windows
-```
+### Beneficios del Diseño Serverless
+- **Costo**: Solo pagas por requests ejecutados
+- **Escalabilidad**: Automática según demanda
+- **Mantenimiento**: Sin administración de servidores
+- **Seguridad**: Aislamiento por ejecución
+- **Disponibilidad**: Alta disponibilidad multi-AZ automática
 
-### AWS Lambda Manual
-```bash
-# Compilar para Lambda
-mvn clean package
+### Optimizaciones Implementadas
+- **Cold Start**: Lazy initialization y configuración mínima
+- **Memory**: Configurado para balance costo/performance
+- **Timeout**: Ajustado según tipo de operación
+- **Environment**: Variables y Parameter Store para configuración dinámica
 
-# Deployment manual
-./deploy-lambda.sh     # Linux/macOS
-deploy-lambda.bat      # Windows
-```
+### Configuración de Ambientes
 
-### Docker (opcional)
-```dockerfile
-FROM openjdk:17-jdk-slim
-COPY target/presupuesto-backend-1.0.0-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app.jar"]
-```
+### Configuración de Ambientes
+Para más detalles sobre configuración específica por ambiente, consultar:
+- **ENVIRONMENT-CONFIGURATION.md**: Configuración completa por ambiente
+- **Parameter Store**: Configuración dinámica centralizada
+- **DynamoDB Scripts**: Scripts de creación de tablas con prefijos
 
-## Arquitectura Multi-Entorno
-
-### EC2 vs Lambda
-El sistema está diseñado para funcionar tanto en:
-
-**EC2 (Tradicional)**
-- Servidor siempre activo
-- Puerto 8443 (HTTPS)
-- Configuración en `application.properties`
-- Perfil por defecto
-
-**AWS Lambda (Serverless)**
-- Ejecución bajo demanda
-- API Gateway como frontend
-- Configuración en `application-lambda.properties`
-- Perfil `lambda`
-- Cold start optimizado
-
-### Configuración por Entorno
-
-**EC2:**
-```properties
-# application.properties
-server.port=8443
-server.ssl.enabled=true
-spring.profiles.active=default
-```
-
-**Lambda:**
-```properties
-# application-lambda.properties
-spring.main.lazy-initialization=true
-spring.profiles.active=lambda
-server.ssl.enabled=false
-```
-
-### Comparación EC2 vs Lambda
-
-| Característica | EC2 | Lambda |
-|---|---|---|
-| **Costo** | Fijo (siempre corriendo) | Por uso (pay-per-request) |
-| **Escalabilidad** | Manual/Auto Scaling Groups | Automática |
-| **Cold Start** | No | Sí (3-5 segundos) |
-| **Tiempo máximo ejecución** | Ilimitado | 15 minutos |
-| **Gestión infraestructura** | Requiere administración | Sin administración |
-| **SSL/TLS** | Configuración manual | Automático via API Gateway |
-| **Logs** | CloudWatch + configuración | CloudWatch automático |
-| **Ideal para** | Tráfico constante | Tráfico variable/esporádico |
-
-### Recomendaciones de Uso
-
-**Usar EC2 cuando:**
-- Tráfico constante y predecible
-- Necesitas control total del servidor
-- Aplicaciones que requieren estado persistente
-- Procesos de larga duración
-
-**Usar Lambda cuando:**
-- Tráfico variable o esporádico
-- Quieres minimizar costos operacionales
-- Escalabilidad automática es crítica
-- Enfoque serverless/microservicios
+### Seguridad y Autenticación
+- **API Gateway Authorizer**: Autenticación centralizada
+- **Roles**: Admin/User manejados via headers
+- **Stateless**: Diseño completamente sin estado para Lambda
+- **CORS**: Configurado dinámicamente por ambiente
 
 ## Contribuir
 
@@ -393,6 +347,12 @@ server.ssl.enabled=false
 4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
 5. Crear un Pull Request
 
+## Documentación Adicional
+
+- **ENVIRONMENT-CONFIGURATION.md**: Configuración detallada por ambiente
+- **AWS Parameter Store**: Configuración de parámetros
+- **deploy-scripts/README-LEGACY.md**: Scripts legacy (no usar)
+
 ## Licencia
 
 Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para detalles.
@@ -401,4 +361,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para detalles.
 
 Para soporte técnico o preguntas, contactar a:
 - Email: soporte@empresa.com
-- Documentación: Ver `CSV_IMPORT_DOCUMENTATION.md` para detalles específicos de importación CSV
+- Documentación: Ver documentación específica en archivos MD del proyecto
