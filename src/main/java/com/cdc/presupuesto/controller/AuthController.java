@@ -14,7 +14,6 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.Map;
 import java.util.HashMap;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,17 +41,18 @@ public class AuthController {
 
     private final RestTemplate restTemplate = new RestTemplate();
     
+    private final UserInfoService userInfoService;
+
     @Autowired
-    private UserInfoService userInfoService;
+    public AuthController(UserInfoService userInfoService) {
+        this.userInfoService = userInfoService;
+    }
 
     @PostMapping("/api/userInfo")
     public ResponseEntity<Map<String, Object>> getUserInfo(@AuthenticationPrincipal Jwt jwt) {
+        // Even though API Gateway handles auth, we still need to process the JWT 
+        // to extract user information and roles
         Map<String, Object> userInfo = new HashMap<>();
-        // userInfo.put("sub", jwt.getSubject());
-        // if (jwt.getClaim("email") != null) userInfo.put("email", jwt.getClaim("email"));
-        // if (jwt.getClaim("name") != null) userInfo.put("name", jwt.getClaim("name"));
-        // if (jwt.getClaim("preferred_username") != null) userInfo.put("preferred_username", jwt.getClaim("preferred_username"));
-        // if (jwt.getClaim("groups") != null) userInfo.put("groups", jwt.getClaim("groups"));
         
         // Agregar información de debug sobre claims disponibles
         logger.debug("Claims disponibles en JWT: {}", jwt.getClaims().keySet());
@@ -73,6 +73,7 @@ public class AuthController {
     @PostMapping("/api/exchange-token")
     @SuppressWarnings("rawtypes")
     public ResponseEntity<Map<String, Object>> exchangeToken(@RequestBody Map<String, String> request) {
+        // We still need token exchange functionality for the frontend
         String authCode = request.get("code");
         String redirectUri = request.get("redirectUri");
         String codeVerifier = request.get("codeVerifier");
@@ -189,6 +190,7 @@ public class AuthController {
 
     @GetMapping("/api/okta-config")
     public ResponseEntity<Map<String, String>> getOktaConfig() {
+        // This endpoint is still needed for the frontend configuration
         Map<String, String> config = Map.of(
             "issuer", issuer,
             "clientId", clientId

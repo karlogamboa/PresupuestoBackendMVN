@@ -13,8 +13,6 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -31,8 +29,6 @@ public class OpenApiConfig {
     @Value("${lambda.function.url:}")
     private String lambdaFunctionUrl;
     
-    @Autowired
-    private Environment environment;
 
     @Bean
     public OpenAPI customOpenAPI() {

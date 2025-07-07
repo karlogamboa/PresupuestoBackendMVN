@@ -5,7 +5,6 @@ import com.cdc.presupuesto.service.DepartamentoService;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,7 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/departamentos")
@@ -27,8 +25,11 @@ public class DepartamentoController {
     @Value("${cors.allowed-origins:*}")
     private String allowedOrigins;
 
-    @Autowired
-    private DepartamentoService departamentoService;
+    private final DepartamentoService departamentoService;
+
+    public DepartamentoController(DepartamentoService departamentoService) {
+        this.departamentoService = departamentoService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Departamento>> getAllDepartamentos(@AuthenticationPrincipal Jwt jwt) {

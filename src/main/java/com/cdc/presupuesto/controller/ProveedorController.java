@@ -5,8 +5,6 @@ import com.cdc.presupuesto.service.ProveedorService;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -17,26 +15,25 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/proveedores")
-// Remove hardcoded @CrossOrigin
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:4200"})
 public class ProveedorController {
     private static final Logger logger = LoggerFactory.getLogger(ProveedorController.class);
 
-    @Value("${cors.allowed-origins:*}")
-    private String allowedOrigins;
+    private final ProveedorService proveedorService;
 
-    @Autowired
-    private ProveedorService proveedorService;
+    public ProveedorController(ProveedorService proveedorService) {
+        this.proveedorService = proveedorService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Proveedor>> getAllProveedores(@AuthenticationPrincipal Jwt jwt) {
         List<Proveedor> proveedores = proveedorService.getAllProveedores();
         return ResponseEntity.ok(proveedores);
     }
-
+    
     @PostMapping("/import-csv")
     public ResponseEntity<Map<String, Object>> importProveedoresFromCSV(
             @RequestParam("file") MultipartFile file,

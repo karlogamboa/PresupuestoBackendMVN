@@ -5,7 +5,6 @@ import com.cdc.presupuesto.service.CategoriaGastoService;
 import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,7 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/categorias-gasto")
@@ -27,8 +25,11 @@ public class CategoriaGastoController {
     @Value("${cors.allowed-origins:*}")
     private String allowedOrigins;
 
-    @Autowired
-    private CategoriaGastoService categoriaGastoService;
+    private final CategoriaGastoService categoriaGastoService;
+
+    public CategoriaGastoController(CategoriaGastoService categoriaGastoService) {
+        this.categoriaGastoService = categoriaGastoService;
+    }
 
     @GetMapping
     public ResponseEntity<List<CategoriaGasto>> getAllCategorias(@AuthenticationPrincipal Jwt jwt) {
@@ -92,13 +93,6 @@ public class CategoriaGastoController {
         // Agrega el header CORS dinámicamente
         String[] origins = allowedOrigins.split(",");
         String originHeader = origins.length > 0 ? origins[0].trim() : "*";
-        return ResponseEntity.status(response.getStatusCode())
-                .headers(response.getHeaders())
-                .header("Access-Control-Allow-Origin", originHeader)
-                .header("Access-Control-Allow-Credentials", "true")
-                .body(response.getBody());
-    }
-}
         return ResponseEntity.status(response.getStatusCode())
                 .headers(response.getHeaders())
                 .header("Access-Control-Allow-Origin", originHeader)

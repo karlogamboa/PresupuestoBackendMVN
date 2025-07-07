@@ -34,6 +34,15 @@ public class LambdaInfoController {
         info.put("status", "running");
         info.put("environment", "lambda");
         info.put("functionUrl", lambdaFunctionUrl.isEmpty() ? "Not configured" : lambdaFunctionUrl);
+        info.put("handler", "com.amazonaws.serverless.proxy.spring.SpringBootProxyHandler::handleRequest");
+        info.put("runtime", "java17");
+        
+        // Runtime information
+        Map<String, Object> runtime = new HashMap<>();
+        runtime.put("javaVersion", System.getProperty("java.version"));
+        runtime.put("memoryMax", Runtime.getRuntime().maxMemory() / 1024 / 1024 + " MB");
+        runtime.put("activeProfiles", System.getProperty("spring.profiles.active", "default"));
+        info.put("runtime", runtime);
 
         // Available endpoints
         Map<String, String> endpoints = new HashMap<>();
@@ -62,7 +71,7 @@ public class LambdaInfoController {
         info.put("documentation", documentation);
 
         return ResponseEntity.ok()
-            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Origin", allowedOrigins)
             .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token")
             .header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
             .body(info);
