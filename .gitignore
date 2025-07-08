@@ -37,3 +37,8 @@ Thumbs.db
 deploy-scripts/
 dynamodb-scripts/
 data/
+aws-scripts/
+
+
+#layer dependencies
+layer.zip
