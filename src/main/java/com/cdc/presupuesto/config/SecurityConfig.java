@@ -17,7 +17,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@Profile("!dev") // Only activate when dev profile is NOT active
+@Profile("!lambda") // Only activate when NOT running as Lambda
 public class SecurityConfig {
 
     @Value("${cors.allowed-origins}")
