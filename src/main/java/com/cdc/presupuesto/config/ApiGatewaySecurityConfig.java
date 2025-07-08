@@ -28,6 +28,8 @@ public class ApiGatewaySecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+            .cors() // Habilita CORS explícitamente
+            .and()
             // Disable CSRF for stateless API
             .csrf(csrf -> csrf.disable())
             
