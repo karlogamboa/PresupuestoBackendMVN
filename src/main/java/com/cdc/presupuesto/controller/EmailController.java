@@ -2,6 +2,7 @@ package com.cdc.presupuesto.controller;
 
 import com.cdc.presupuesto.service.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.ses.model.SesException;
@@ -15,15 +16,18 @@ public class EmailController {
     @Autowired
     private EmailService emailService;
 
+    @Value("${email.from}")
+    private String defaultFromEmail;
+
     @PostMapping("/send")
     public ResponseEntity<Map<String, String>> sendEmail(@RequestBody EmailRequest emailRequest) {
         try {
             String messageId;
-            
+            String from = defaultFromEmail;
             if (emailRequest.getHtmlBody() != null && !emailRequest.getHtmlBody().isEmpty()) {
                 // Enviar email HTML
                 messageId = emailService.sendHtmlEmail(
-                    emailRequest.getFrom(),
+                    from,
                     emailRequest.getTo(),
                     emailRequest.getSubject(),
                     emailRequest.getHtmlBody(),
@@ -32,7 +36,7 @@ public class EmailController {
             } else {
                 // Enviar email de texto simple
                 messageId = emailService.sendSimpleEmail(
-                    emailRequest.getFrom(),
+                    from,
                     emailRequest.getTo(),
                     emailRequest.getSubject(),
                     emailRequest.getBody()
@@ -64,7 +68,7 @@ public class EmailController {
     public ResponseEntity<Map<String, String>> sendBudgetNotification(@RequestBody BudgetNotificationRequest request) {
         try {
             emailService.sendBudgetRequestNotification(
-                request.getFrom(),
+                defaultFromEmail,
                 request.getTo(),
                 request.getRequestId(),
                 request.getRequesterName(),
@@ -94,7 +98,7 @@ public class EmailController {
     public ResponseEntity<Map<String, String>> sendStatusNotification(@RequestBody StatusNotificationRequest request) {
         try {
             emailService.sendBudgetStatusNotification(
-                request.getFrom(),
+                defaultFromEmail,
                 request.getTo(),
                 request.getRequestId(),
                 request.getStatus(),

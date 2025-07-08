@@ -85,6 +85,19 @@ public class SolicitanteController {
             return ResponseEntity.internalServerError().body(error);
         }
     }
+
+    @GetMapping("/{numEmpleado}")
+    public ResponseEntity<?> getSolicitanteByNumEmpleado(@PathVariable String numEmpleado) {
+        Solicitante solicitante = solicitanteService.getSolicitanteByNumEmpleado(numEmpleado);
+        if (solicitante != null) {
+            return ResponseEntity.ok(solicitante);
+        } else {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "Solicitante no encontrado");
+            return ResponseEntity.status(404).body(error);
+        }
+    }
 }
 
 
