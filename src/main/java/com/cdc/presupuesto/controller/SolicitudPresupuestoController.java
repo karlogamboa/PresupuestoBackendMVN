@@ -52,9 +52,7 @@ public class SolicitudPresupuestoController {
     })
     public ResponseEntity<List<SolicitudPresupuesto>> getAllSolicitudes() {
         try {
-            logger.info("Obteniendo todas las solicitudes de presupuesto");
             List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findAll();
-            logger.info("Se encontraron {} solicitudes", solicitudes.size());
             return ResponseEntity.ok(solicitudes);
         } catch (Exception e) {
             logger.error("Error obteniendo solicitudes de presupuesto: {}", e.getMessage(), e);
@@ -75,8 +73,6 @@ public class SolicitudPresupuestoController {
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId) {
         try {
-            logger.info("Obteniendo solicitud con ID: {}", id);
-            
             // Si no se proporciona solicitudId, usar el mismo ID
             if (solicitudId == null || solicitudId.isEmpty()) {
                 solicitudId = id;
@@ -85,7 +81,6 @@ public class SolicitudPresupuestoController {
             Optional<SolicitudPresupuesto> solicitud = solicitudPresupuestoRepository.findById(id, solicitudId);
             
             if (solicitud.isPresent()) {
-                logger.info("Solicitud encontrada: {}", solicitud.get().getId());
                 return ResponseEntity.ok(solicitud.get());
             } else {
                 logger.warn("Solicitud no encontrada para ID: {}", id);
@@ -110,51 +105,47 @@ public class SolicitudPresupuestoController {
             @Parameter(description = "Datos de la nueva solicitud")
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
-            logger.info("Creando nueva solicitud de presupuesto");
-            
             // Obtener información del usuario autenticado
             Map<String, Object> userInfo = userInfoService.getCurrentUserInfo();
             String userEmail = UserAuthUtils.getCurrentUserEmail();
-            
+
             // Generar ID único si no existe
             if (solicitud.getId() == null || solicitud.getId().isEmpty()) {
                 solicitud.setId(UUID.randomUUID().toString());
             }
-            
+
             // Generar solicitudId si no existe
             if (solicitud.getSolicitudId() == null || solicitud.getSolicitudId().isEmpty()) {
                 solicitud.setSolicitudId("REQ-" + System.currentTimeMillis());
             }
-            
+
             // Establecer información del usuario si no está presente
             if (solicitud.getCorreo() == null || solicitud.getCorreo().isEmpty()) {
                 solicitud.setCorreo(userEmail);
             }
-            
+
             if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
                 solicitud.setSolicitante(userInfo.get("nombre") != null ? userInfo.get("nombre").toString() : "");
             }
-            
+
             if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
                 solicitud.setNumeroEmpleado(userInfo.get("numeroEmpleado") != null ? 
                     userInfo.get("numeroEmpleado").toString() : "");
             }
-            
+
             // Establecer fechas
             String fechaActual = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
             solicitud.setFecha(fechaActual);
             solicitud.setFechaCreacion(Instant.now());
             solicitud.setFechaActualizacion(Instant.now());
-            
+
             // Establecer estatus por defecto si no existe
             if (solicitud.getEstatusConfirmacion() == null || solicitud.getEstatusConfirmacion().isEmpty()) {
                 solicitud.setEstatusConfirmacion("Pendiente");
             }
-            
+
             // Guardar la solicitud
             SolicitudPresupuesto savedSolicitud = solicitudPresupuestoRepository.save(solicitud);
-            logger.info("Solicitud creada exitosamente con ID: {}", savedSolicitud.getId());
-            
             return ResponseEntity.status(HttpStatus.CREATED).body(savedSolicitud);
         } catch (Exception e) {
             logger.error("Error creando solicitud de presupuesto: {}", e.getMessage(), e);
@@ -168,7 +159,6 @@ public class SolicitudPresupuestoController {
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Solicitud actualizada exitosamente"),
         @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "400", description = "Datos de solicitud inválidos"),
         @ApiResponse(responseCode = "401", description = "No autorizado"),
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
@@ -178,8 +168,6 @@ public class SolicitudPresupuestoController {
             @Parameter(description = "Datos actualizados de la solicitud")
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
-            logger.info("Actualizando solicitud con ID: {}", id);
-            
             // Si no se proporciona solicitudId, usar el mismo ID
             if (solicitudId == null || solicitudId.isEmpty()) {
                 solicitudId = id;
@@ -204,8 +192,6 @@ public class SolicitudPresupuestoController {
             
             // Guardar la solicitud actualizada
             SolicitudPresupuesto updatedSolicitud = solicitudPresupuestoRepository.save(solicitud);
-            logger.info("Solicitud actualizada exitosamente: {}", updatedSolicitud.getId());
-            
             return ResponseEntity.ok(updatedSolicitud);
         } catch (Exception e) {
             logger.error("Error actualizando solicitud: {}", e.getMessage(), e);
@@ -226,8 +212,6 @@ public class SolicitudPresupuestoController {
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId) {
         try {
-            logger.info("Eliminando solicitud con ID: {}", id);
-            
             // Si no se proporciona solicitudId, usar el mismo ID
             if (solicitudId == null || solicitudId.isEmpty()) {
                 solicitudId = id;
@@ -242,8 +226,6 @@ public class SolicitudPresupuestoController {
             
             // Eliminar la solicitud
             solicitudPresupuestoRepository.deleteById(id, solicitudId);
-            logger.info("Solicitud eliminada exitosamente: {}", id);
-            
             return ResponseEntity.ok(Map.of("message", "Solicitud eliminada exitosamente"));
         } catch (Exception e) {
             logger.error("Error eliminando solicitud: {}", e.getMessage(), e);
@@ -262,9 +244,7 @@ public class SolicitudPresupuestoController {
     public ResponseEntity<List<SolicitudPresupuesto>> getSolicitudesByEmpleado(
             @PathVariable String numeroEmpleado) {
         try {
-            logger.info("Obteniendo solicitudes para empleado: {}", numeroEmpleado);
             List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findByNumEmpleado(numeroEmpleado);
-            logger.info("Se encontraron {} solicitudes para el empleado {}", solicitudes.size(), numeroEmpleado);
             return ResponseEntity.ok(solicitudes);
         } catch (Exception e) {
             logger.error("Error obteniendo solicitudes para empleado {}: {}", numeroEmpleado, e.getMessage(), e);
@@ -287,15 +267,6 @@ public class SolicitudPresupuestoController {
             @RequestParam(required = false) String solicitudId,
             @RequestBody Map<String, String> estatusRequest) {
         try {
-            logger.info("Actualizando estatus de solicitud con ID: {}", id);
-            
-            // Verificar que el usuario es Admin
-            if (!userInfoService.isCurrentUserAdmin()) {
-                logger.warn("Usuario no autorizado para cambiar estatus de solicitud");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("success", false, "message", "No autorizado - Solo Admin"));
-            }
-            
             // Si no se proporciona solicitudId, usar el mismo ID
             if (solicitudId == null || solicitudId.isEmpty()) {
                 solicitudId = id;
@@ -321,8 +292,6 @@ public class SolicitudPresupuestoController {
             
             // Guardar la solicitud actualizada
             SolicitudPresupuesto updatedSolicitud = solicitudPresupuestoRepository.save(solicitud);
-            logger.info("Estatus actualizado exitosamente para solicitud: {}", updatedSolicitud.getId());
-            
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Estatus actualizado exitosamente",
@@ -348,66 +317,41 @@ public class SolicitudPresupuestoController {
     public ResponseEntity<Map<String, Object>> cambiarEstatus(
             @RequestBody Map<String, Object> request) {
         try {
+            String id = null;
             String solicitudId = null;
             String nuevoEstatus = null;
-            
             // Manejar diferentes formatos de payload
-            if (request.containsKey("solicitudId")) {
-                // Formato simple: {"solicitudId": "...", "estatus": "..."}
-                solicitudId = (String) request.get("solicitudId");
-                nuevoEstatus = (String) request.get("estatus");
-            } else if (request.containsKey("solicitud")) {
-                // Formato complejo: {"estatusConfirmacion": "...", "solicitud": {...}}
+            if (request.containsKey("solicitud")) {
                 nuevoEstatus = (String) request.get("estatusConfirmacion");
                 @SuppressWarnings("unchecked")
                 Map<String, Object> solicitudData = (Map<String, Object>) request.get("solicitud");
                 if (solicitudData != null) {
-                    solicitudId = (String) solicitudData.get("id");
-                    if (solicitudId == null) {
-                        solicitudId = (String) solicitudData.get("solicitudId");
-                    }
+                    id = (String) solicitudData.get("id");
+                    solicitudId = (String) solicitudData.get("solicitudId");
                 }
+            } else if (request.containsKey("solicitudId")) {
+                solicitudId = (String) request.get("solicitudId");
+                nuevoEstatus = (String) request.get("estatus");
+                id = solicitudId; // fallback si solo viene uno
             }
-            
-            logger.info("Cambiando estatus de solicitud ID: {} a estatus: {}", solicitudId, nuevoEstatus);
-            
-            // Verificar que el usuario es Admin
-            if (!userInfoService.isCurrentUserAdmin()) {
-                logger.warn("Usuario no autorizado para cambiar estatus de solicitud");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("success", false, "message", "No autorizado - Solo Admin"));
-            }
-            
             // Validar parámetros requeridos
-            if (solicitudId == null || solicitudId.isEmpty()) {
+            if (id == null || id.isEmpty() || solicitudId == null || solicitudId.isEmpty()) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "solicitudId es requerido"));
+                        .body(Map.of("success", false, "message", "id y solicitudId son requeridos"));
             }
-            
-            if (nuevoEstatus == null || nuevoEstatus.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "estatus es requerido"));
-            }
-            
-            // Buscar la solicitud (usando el mismo ID para ambos campos)
-            Optional<SolicitudPresupuesto> existingSolicitud = solicitudPresupuestoRepository.findById(solicitudId, solicitudId);
+            Optional<SolicitudPresupuesto> existingSolicitud = solicitudPresupuestoRepository.findById(id, solicitudId);
             if (!existingSolicitud.isPresent()) {
-                logger.warn("Solicitud no encontrada para ID: {}", solicitudId);
+                logger.warn("Solicitud no encontrada para ID: {} y solicitudId: {}", id, solicitudId);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("success", false, "message", "Solicitud no encontrada"));
             }
-            
             // Actualizar el estatus
             SolicitudPresupuesto solicitud = existingSolicitud.get();
             String estatusAnterior = solicitud.getEstatusConfirmacion();
             solicitud.setEstatusConfirmacion(nuevoEstatus);
             solicitud.setFechaActualizacion(Instant.now());
-            
             // Guardar la solicitud actualizada
             SolicitudPresupuesto updatedSolicitud = solicitudPresupuestoRepository.save(solicitud);
-            logger.info("Estatus actualizado exitosamente para solicitud: {} de '{}' a '{}'", 
-                       updatedSolicitud.getId(), estatusAnterior, nuevoEstatus);
-            
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Estatus actualizado exitosamente",
