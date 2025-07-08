@@ -43,8 +43,6 @@ public class ProveedorService {
     }
 
     public Map<String, Object> importProveedoresFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
-        logger.info("Starting CSV import for proveedores. Replace all: {}", replaceAll);
-        
         List<Proveedor> proveedores = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;

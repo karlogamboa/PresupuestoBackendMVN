@@ -44,8 +44,6 @@ public class CategoriaGastoService {
     }
 
     public Map<String, Object> importCategoriasFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
-        logger.info("Starting CSV import for categorias gasto. Replace all: {}", replaceAll);
-        
         List<CategoriaGasto> categorias = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;
@@ -125,7 +123,6 @@ public class CategoriaGastoService {
             
             // If replace all is true, delete all existing categorias first
             if (replaceAll && !categorias.isEmpty()) {
-                logger.info("Deleting all existing categorias gasto before import");
                 categoriaGastoRepository.deleteAll();
             }
             

@@ -38,8 +38,6 @@ public class CategoriaGastoController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "replaceAll", defaultValue = "true") boolean replaceAll) {
         
-        logger.info("CSV import request received from user: {}", UserAuthUtils.getCurrentUserId());
-        
         try {
             // Validate file
             if (file.isEmpty()) {

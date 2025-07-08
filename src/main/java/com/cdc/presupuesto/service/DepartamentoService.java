@@ -44,7 +44,6 @@ public class DepartamentoService {
     }
 
     public Map<String, Object> importDepartamentosFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
-        logger.info("Starting CSV import for departamentos. Replace all: {}", replaceAll);
         
         List<Departamento> departamentos = new ArrayList<>();
         int successCount = 0;
@@ -90,13 +89,11 @@ public class DepartamentoService {
             
             // If replace all is true, delete all existing departamentos first
             if (replaceAll && !departamentos.isEmpty()) {
-                logger.info("Deleting all existing departamentos before import");
                 departamentoRepository.deleteAll();
             }
             
             // Save all valid departamentos
             if (!departamentos.isEmpty()) {
-                logger.info("Saving {} departamentos to database", departamentos.size());
                 departamentoRepository.saveAll(departamentos);
             }
             
@@ -116,8 +113,6 @@ public class DepartamentoService {
         result.put("errorCount", errorCount);
         result.put("errors", errors);
         result.put("message", String.format("Import completed: %d successful, %d errors", successCount, errorCount));
-        
-        logger.info("CSV import completed. Success: {}, Errors: {}", successCount, errorCount);
         
         return result;
     }

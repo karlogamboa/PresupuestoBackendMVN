@@ -59,8 +59,6 @@ public class AuthController {
                 debugInfo.put("authorities", auth.getAuthorities().toString());
             }
             
-            logger.info("Debug Auth Info - User: {}", debugInfo.get("userEmail"));
-            
             return ResponseEntity.ok(debugInfo);
         } catch (Exception e) {
             logger.error("Error obteniendo información de autenticación: {}", e.getMessage(), e);
@@ -76,8 +74,6 @@ public class AuthController {
     public ResponseEntity<Map<String, Object>> debugUserLookup() {
         try {
             Map<String, Object> debugInfo = userInfoService.getDebugInfo();
-            
-            logger.info("Debug User Lookup: {}", debugInfo);
             
             return ResponseEntity.ok(debugInfo);
         } catch (Exception e) {
