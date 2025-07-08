@@ -62,29 +62,25 @@ public class DepartamentoService {
                 int rowNumber = i + 2; // +2 because we skip header and arrays are 0-indexed
                 
                 try {
-                    if (record.length < 4) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 4, got " + record.length + ")");
+                    if (record.length != 3) {
+                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 3, got " + record.length + ")");
                         errorCount++;
                         continue;
                     }
-                    
                     Departamento departamento = new Departamento();
-                    String id = UUID.randomUUID().toString();                    
+                    String id = UUID.randomUUID().toString();
                     departamento.setId(id);
-                    departamento.setNombreDepartamento(record[1].trim());
-                    departamento.setSubDepartamento(record[2].trim());
-                    departamento.setCeco(record[3].trim());
-                    
+                    departamento.setNombreDepartamento(record[0].trim());
+                    departamento.setSubDepartamento(record[1].trim());
+                    departamento.setCeco(record[2].trim());
                     // Validate required fields
                     if (departamento.getNombreDepartamento().isEmpty()) {
                         errors.add("Row " + rowNumber + ": Nombre Departamento is required");
                         errorCount++;
                         continue;
                     }
-                    
                     departamentos.add(departamento);
                     successCount++;
-                    
                 } catch (Exception e) {
                     errors.add("Row " + rowNumber + ": Error processing record - " + e.getMessage());
                     errorCount++;
