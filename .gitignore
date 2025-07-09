@@ -42,3 +42,4 @@ aws-scripts/
 
 #layer dependencies
 layer.zip
+java/lib/
