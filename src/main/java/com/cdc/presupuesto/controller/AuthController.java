@@ -1,31 +1,32 @@
 package com.cdc.presupuesto.controller;
 
-import com.cdc.presupuesto.service.UserInfoService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cdc.presupuesto.service.JwtService;
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.RestClientException;
 
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.Collections;
 import java.util.Map;
-import java.util.HashMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 @RestController
+@RequestMapping("/auth")
 public class AuthController {
-    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
-    private static final String ERROR_DESCRIPTION = "error_description";
-    private static final String ERROR = "error";
 
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
+    private final RestTemplate restTemplate;
+    private final JwtService jwtService;
 
     @Value("${okta.oauth2.issuer}")
     private String issuer;
@@ -33,179 +34,82 @@ public class AuthController {
     @Value("${okta.oauth2.client-id}")
     private String clientId;
 
-    @Value("${okta.oauth2.client-secret:}")
+    @Value("${okta.oauth2.client-secret}")
     private String clientSecret;
 
-    @Value("${okta.oauth2.audience:api://default}")
-    private String audience;
+    @Value("${okta.oauth2.redirect-uri}")
+    private String redirectUri;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    
-    private final UserInfoService userInfoService;
-
-    @Autowired
-    public AuthController(UserInfoService userInfoService) {
-        this.userInfoService = userInfoService;
+    public AuthController(RestTemplate restTemplate, JwtService jwtService) {
+        this.restTemplate = restTemplate;
+        this.jwtService = jwtService;
     }
 
-    @PostMapping("/api/userInfo")
-    public ResponseEntity<Map<String, Object>> getUserInfo(@AuthenticationPrincipal Jwt jwt) {
-        // Even though API Gateway handles auth, we still need to process the JWT 
-        // to extract user information and roles
-        Map<String, Object> userInfo = new HashMap<>();
-        
-        // Agregar información de debug sobre claims disponibles
-        logger.debug("Claims disponibles en JWT: {}", jwt.getClaims().keySet());
-        
-        // Obtener información adicional del usuario desde DynamoDB
-        Map<String, Object> dynamoUserInfo = userInfoService.getUserInfo(jwt);
-        
-        // Agregar toda la información del usuario desde DynamoDB
-        userInfo.putAll(dynamoUserInfo);
-        
-        // Agregar roles como lista
-        String userRole = userInfoService.getUserRoles(jwt);
-        userInfo.put("role", userRole);
-        
-        return ResponseEntity.ok(userInfo);
+    @GetMapping("/login")
+    public void login(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        // Genera un 'state' aleatorio y seguro para prevenir ataques CSRF
+        String state = generateState();
+        request.getSession().setAttribute("OAUTH2_STATE", state);
+
+        // Construye la URL de autorización de Okta
+        String authorizationUrl = issuer + "/v1/authorize" +
+                "?client_id=" + clientId +
+                "&response_type=code" +
+                "&scope=openid profile email" +
+                "&redirect_uri=" + redirectUri +
+                "&state=" + state;
+
+        // Redirige al usuario al endpoint de autorización de Okta
+        response.sendRedirect(authorizationUrl);
     }
 
-    @PostMapping("/api/exchange-token")
-    @SuppressWarnings("rawtypes")
-    public ResponseEntity<Map<String, Object>> exchangeToken(@RequestBody Map<String, String> request) {
-        // We still need token exchange functionality for the frontend
-        String authCode = request.get("code");
-        String redirectUri = request.get("redirectUri");
-        String codeVerifier = request.get("codeVerifier");
-
-        if (authCode == null || authCode.isEmpty()) {
-            return buildBadRequest("Authorization code is required");
+    @GetMapping("/callback")
+    public ResponseEntity<Map<String, String>> callback(@RequestParam("code") String code, @RequestParam("state") String state, HttpSession session) {
+        // Valida el parámetro 'state'
+        String storedState = (String) session.getAttribute("OAUTH2_STATE");
+        if (storedState == null || !storedState.equals(state)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Collections.singletonMap("error", "Invalid state parameter"));
         }
+        session.removeAttribute("OAUTH2_STATE");
 
-        try {
-            ResponseEntity<Map> tokenResponse = exchangeAuthCodeForTokens(authCode, redirectUri, codeVerifier);
-            return buildTokenExchangeResponse(tokenResponse);
-        } catch (RestClientException e) {
-            logger.error("RestClientException during token exchange: {}", e.getMessage(), e);
-            return buildServerError("Token exchange failed: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Unexpected error during token exchange: {}", e.getMessage(), e);
-            return buildServerError("Unexpected error during token exchange: " + e.getMessage());
-        }
-    }
-
-    @SuppressWarnings("rawtypes")
-    private ResponseEntity<Map> exchangeAuthCodeForTokens(String authCode, String redirectUri, String codeVerifier) {
-        String tokenEndpoint = issuer + "/v1/token";
-        MultiValueMap<String, String> tokenRequestBody = new LinkedMultiValueMap<>();
-        tokenRequestBody.add("grant_type", "authorization_code");
-        tokenRequestBody.add("code", authCode);
-        tokenRequestBody.add("client_id", clientId);
-        tokenRequestBody.add("client_secret", clientSecret);
-        tokenRequestBody.add("redirect_uri", redirectUri != null ? redirectUri : "http://localhost:3000/callback");
-        if (codeVerifier != null && !codeVerifier.isEmpty()) {
-            tokenRequestBody.add("code_verifier", codeVerifier);
-        }
+        // Intercambia el código de autorización por tokens
+        String tokenUrl = issuer + "/v1/token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Accept", "application/json");
-        headers.set("User-Agent", "PresupuestoBackend/1.0");
+        String authHeader = Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes());
+        headers.set("Authorization", "Basic " + authHeader);
 
-        HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(tokenRequestBody, headers);
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "authorization_code");
+        body.add("code", code);
+        body.add("redirect_uri", redirectUri);
 
-        return restTemplate.exchange(
-            tokenEndpoint,
-            HttpMethod.POST,
-            tokenRequest,
-            Map.class
-        );
-    }
+        HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(body, headers);
 
-    @SuppressWarnings("rawtypes")
-    private ResponseEntity<Map<String, Object>> buildTokenExchangeResponse(ResponseEntity<Map> tokenResponse) {
-        if (tokenResponse.getStatusCode() == HttpStatus.OK && tokenResponse.getBody() != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> tokens = tokenResponse.getBody();
-            if (tokens != null) {
-                Map<String, Object> response = buildTokenResponse(tokens);
-                return ResponseEntity.ok(response);
-            } else {
-                return buildServerError("Empty response from token endpoint");
-            }
-        } else {
-            logger.error("Token exchange failed with status: {}", tokenResponse.getStatusCode());
-            if (tokenResponse.getBody() != null) {
-                logger.error("Error response: {}", tokenResponse.getBody());
-            }
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                ERROR, "invalid_grant",
-                ERROR_DESCRIPTION, "Failed to exchange authorization code for tokens. Status: " + tokenResponse.getStatusCode()
-            ));
+        ResponseEntity<JsonNode> responseEntity = restTemplate.postForEntity(tokenUrl, requestEntity, JsonNode.class);
+
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.singletonMap("error", "Failed to exchange code for token"));
         }
-    }
-    private Map<String, Object> buildTokenResponse(Map<String, Object> tokens) {
-        Map<String, Object> response = new HashMap<>();
-        putIfNotNull(response, "access_token", tokens.get("access_token"));
-        putIfNotNull(response, "id_token", tokens.get("id_token"));
-        putIfNotNull(response, "refresh_token", tokens.get("refresh_token"));
-        putIfNotNull(response, "token_type", tokens.get("token_type"));
-        putIfNotNull(response, "expires_in", tokens.get("expires_in"));
-        putIfNotNull(response, "scope", tokens.get("scope"));
-        response.put("issuer", issuer);
-        response.put("audience", audience);
-        response.put("client_id", clientId);
-        response.put("success", true);
-        response.put("message", "Token exchange completed successfully");
-        return response;
+
+        JsonNode responseBody = responseEntity.getBody();
+        String idToken = responseBody.get("id_token").asText();
+
+        // Extrae la información del usuario del ID Token (ej. email)
+        // NOTA: En producción, deberías validar la firma y las claims del ID Token.
+        String email = jwtService.getClaimFromToken(idToken, "email");
+
+        // Genera tu propio JWT de sesión para el frontend
+        String sessionJwt = jwtService.generateSessionToken(email);
+
+        return ResponseEntity.ok(Collections.singletonMap("session_token", sessionJwt));
     }
 
-    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
-        if (value != null) {
-            map.put(key, value);
-        }
-    }
-
-    private ResponseEntity<Map<String, Object>> buildBadRequest(String description) {
-        return ResponseEntity.badRequest().body(Map.of(
-            ERROR, "invalid_request",
-            ERROR_DESCRIPTION, description
-        ));
-    }
-
-    private ResponseEntity<Map<String, Object>> buildServerError(String description) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-            ERROR, "server_error",
-            ERROR_DESCRIPTION, description
-        ));
-    }
-
-    @PostMapping("/api/logout")
-    public ResponseEntity<Map<String, String>> logout() {
-        return ResponseEntity.ok(Map.of(
-            "status", "success",
-            "message", "Logged out successfully"
-        ));
-    }
-
-    @GetMapping("/api/okta-config")
-    public ResponseEntity<Map<String, String>> getOktaConfig() {
-        // This endpoint is still needed for the frontend configuration
-        Map<String, String> config = Map.of(
-            "issuer", issuer,
-            "clientId", clientId
-        );
-
-        // Usa el valor de allowedOrigins (de AWS Parameter Store o properties)
-        String[] origins = allowedOrigins.split(",");
-        String originHeader = origins.length > 0 ? origins[0].trim() : "*";
-
-        return ResponseEntity.ok()
-            .header("Access-Control-Allow-Origin", originHeader)
-            .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-            .header("Access-Control-Allow-Headers", "*")
-            .header("Access-Control-Allow-Credentials", "true")
-            .header("Content-Security-Policy", "default-src 'self' https: http: 'unsafe-inline' 'unsafe-eval'")
-            .body(config);
+    private String generateState() {
+        SecureRandom sr = new SecureRandom();
+        byte[] randomBytes = new byte[32];
+        sr.nextBytes(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 }

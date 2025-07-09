@@ -41,10 +41,10 @@ src/main/java/com/cdc/presupuesto/
 ## Endpoints Principales
 
 ### Autenticación
-- `POST /api/userInfo` - Información del usuario autenticado
-- `POST /api/exchange-token` - Intercambio de tokens OAuth2
-- `POST /api/logout` - Cerrar sesión
-- `GET /api/okta-config` - Configuración de Okta
+- `GET /auth/login` - Inicia el flujo de autenticación OAuth2, redirigiendo al usuario a Okta.
+- `GET /auth/callback` - Callback de Okta. Intercambia el código de autorización por tokens y establece una sesión segura.
+- `POST /api/userInfo` - Obtiene la información del usuario actualmente autenticado.
+- `POST /api/logout` - Invalida la sesión del usuario.
 
 ### Gestión de Usuarios
 - `GET /api/usuarios` - Listar todos los usuarios (Admin)
@@ -86,6 +86,7 @@ aws.dynamodb.table-prefix=presupuesto-
 okta.oauth2.issuer=https://your-domain.okta.com/oauth2/default
 okta.oauth2.client-id=your-client-id
 okta.oauth2.client-secret=your-client-secret
+okta.oauth2.redirect-uri=https://tu-api-gateway-url/auth/callback
 okta.oauth2.audience=api://default
 
 # CORS
@@ -189,7 +190,8 @@ curl -X POST \
 ## Seguridad
 
 ### Autenticación
-- JWT tokens válidos requeridos para todas las operaciones
+- El backend implementa el flujo **OAuth2 Authorization Code Flow**. Esto garantiza que los tokens de Okta y el `client_secret` nunca se expongan al navegador.
+- Después de una autenticación exitosa, el backend genera su propio **JWT de sesión**. Este token se utiliza para proteger los endpoints de la API, en lugar de usar los tokens de Okta directamente en el cliente.
 - Verificación de roles para operaciones administrativas
 
 ### Autorización
