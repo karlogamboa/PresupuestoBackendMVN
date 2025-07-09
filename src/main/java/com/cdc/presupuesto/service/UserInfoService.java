@@ -4,9 +4,11 @@ import com.cdc.presupuesto.util.UserAuthUtils;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;
 import java.util.HashMap;
+import com.cdc.presupuesto.model.Solicitante;
 
 /**
  * Servicio para manejo de información de usuarios
@@ -16,6 +18,9 @@ import java.util.HashMap;
 public class UserInfoService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserInfoService.class);
+
+    @Autowired
+    private SolicitanteService solicitanteService;
 
     /**
      * Obtiene la información del usuario desde el contexto de API Gateway
@@ -41,11 +46,17 @@ public class UserInfoService {
             
             // Obtener roles del contexto de autenticación
             if (UserAuthUtils.hasRole("ADMIN") || UserAuthUtils.hasRole("ADMINISTRATOR")) {
-                userInfo.put("role", "ADMIN");
+                userInfo.put("roles", "ADMIN");
             } else {
-                userInfo.put("role", "USER");
+                userInfo.put("roles", "USER");
             }
             
+            // Buscar solicitante por correo electrónico y setear numeroEmpleado si existe
+            Solicitante solicitante = solicitanteService.getSolicitanteByCorreoElectronico(userEmail);
+            if (solicitante != null) {
+                userInfo.put("numeroEmpleado", solicitante.getNumEmpleado());
+            }
+
             logger.debug("Usuario info obtenido del API Gateway para: {}", userEmail);
             return userInfo;
             
@@ -95,7 +106,7 @@ public class UserInfoService {
         userInfo.put("id", userId != null ? userId : "unknown");
         userInfo.put("nombre", userName != null ? userName : "");
         userInfo.put("email", "");
-        userInfo.put("role", "USER");
+        userInfo.put("roles", "USER");
         userInfo.put("isAdmin", false);
         return userInfo;
     }

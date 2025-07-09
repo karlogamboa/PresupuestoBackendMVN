@@ -14,6 +14,7 @@ public class Solicitante {
     private String puestoTrabajo = "";
     private boolean aprobadorGastos = false;
     private int idInterno = 0;
+    private String correoElectronico = "";
 
     public Solicitante() {}
 
@@ -79,6 +80,15 @@ public class Solicitante {
         this.idInterno = idInterno;
     }
 
+    @DynamoDbAttribute("Correo electrónico")
+    public String getCorreoElectronico() {
+        return correoElectronico;
+    }
+
+    public void setCorreoElectronico(String correoElectronico) {
+        this.correoElectronico = correoElectronico;
+    }
+
     @Override
     public String toString() {
         return "Solicitante{" +
@@ -87,6 +97,7 @@ public class Solicitante {
                 ", subsidiaria='" + subsidiaria + '\'' +
                 ", departamento='" + departamento + '\'' +
                 ", puestoTrabajo='" + puestoTrabajo + '\'' +
+                ", correoElectronico='" + correoElectronico + '\'' +
                 ", aprobadorGastos=" + aprobadorGastos +
                 ", idInterno=" + idInterno +
                 '}';

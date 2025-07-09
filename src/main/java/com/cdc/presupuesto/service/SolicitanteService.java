@@ -111,9 +111,7 @@ public class SolicitanteService {
                     
                     // Parse aprobadorGastos (column 31)
                     String aprobadorStr = getColumnValue(record, 31).toLowerCase();
-                    solicitante.setAprobadorGastos("true".equals(aprobadorStr) || "1".equals(aprobadorStr) || 
-                                                 "sí".equals(aprobadorStr) || "si".equals(aprobadorStr) || 
-                                                 "yes".equals(aprobadorStr));
+                    solicitante.setAprobadorGastos(!aprobadorStr.isEmpty());
                     
                     // Validate required fields
                     if (solicitante.getNumEmpleado().isEmpty() || solicitante.getNombre().isEmpty()) {

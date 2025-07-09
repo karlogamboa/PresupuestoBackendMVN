@@ -268,7 +268,7 @@ dynamodb-scripts/
 aws-scripts/
 
 #GitHub Actions workflows
-.github/
+.github/*
 
 #VS Code settings
 .vscode/

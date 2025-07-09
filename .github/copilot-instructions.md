@@ -18,8 +18,6 @@ This is a Spring Boot Java project for a budget management system with the follo
 ## API Endpoints
 - `/api/solicitudes-presupuesto` - Budget request management
 - `/api/solicitantes` - Employee/requester management
-- `/api/areas` - Area management
-- `/api/subdepartamentos` - Sub-department management (filtered by areaId)
 - `/api/departamentos` - Department management
 - `/api/proveedores` - Supplier management
 - `/api/categorias-gasto` - Expense category management

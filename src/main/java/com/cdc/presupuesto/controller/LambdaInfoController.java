@@ -45,7 +45,7 @@ public class LambdaInfoController {
 
         return ResponseEntity.ok()
                 .header("Access-Control-Allow-Origin", allowedOrigins)
-                .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,x-user-id,x-user-roles,x-user-email")
+                .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,x-user-roles,x-user-email")
                 .header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
                 .body(info);
     }

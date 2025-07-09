@@ -22,36 +22,34 @@ import java.util.stream.Collectors;
  */
 public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String USER_ID_HEADER = "x-user-id";
     private static final String USER_EMAIL_HEADER = "x-user-email";
     private static final String USER_ROLES_HEADER = "x-user-roles";
     private static final String USER_NAME_HEADER = "x-user-name";
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, 
-                                    @NonNull HttpServletResponse response, 
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
-        
+
         // Extract user information from API Gateway headers
-        String userId = request.getHeader(USER_ID_HEADER);
         String userEmail = request.getHeader(USER_EMAIL_HEADER);
         String userRoles = request.getHeader(USER_ROLES_HEADER);
         String userName = request.getHeader(USER_NAME_HEADER);
 
         // If user ID is present, create authentication
-        if (userId != null && !userId.trim().isEmpty()) {
-            
+        if (userEmail != null && !userEmail.trim().isEmpty()) {
+
             // Parse roles from comma-separated string
             Collection<SimpleGrantedAuthority> authorities = parseRoles(userRoles);
-            
+
             // Create principal with user information
             ApiGatewayUserPrincipal principal = new ApiGatewayUserPrincipal(
-                userId, userName != null ? userName : userEmail, userEmail);
-            
+                null, userName != null ? userName : userEmail, userEmail);
+
             // Create authentication token
-            UsernamePasswordAuthenticationToken authentication = 
+            UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, authorities);
-            
+
             // Set authentication in security context
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
@@ -63,7 +61,7 @@ public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
         if (rolesHeader == null || rolesHeader.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        
+
         return Arrays.stream(rolesHeader.split(","))
                 .map(String::trim)
                 .filter(role -> !role.isEmpty())
