@@ -1,6 +1,5 @@
 package com.cdc.presupuesto.model;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
@@ -10,87 +9,50 @@ import java.time.Instant;
 import java.util.List;
 
 @DynamoDbBean
-@Schema(description = "Solicitud de Presupuesto - Representa una solicitud de presupuesto en el sistema CDC")
 public class SolicitudPresupuesto {
     
-    @Schema(description = "Identificador único de la solicitud", example = "uuid-12345")
     private String id;
-    
-    @Schema(description = "ID de la solicitud", example = "REQ-1234567890")
     private String solicitudId;
-    
-    @Schema(description = "Nombre del solicitante", example = "Juan Pérez")
     private String solicitante;
-    
-    @Schema(description = "Número de empleado", example = "EMP001")
     private String numeroEmpleado;
-    
-    @Schema(description = "Correo electrónico del solicitante", example = "juan.perez@cdc.com")
     private String correo;
-    
-    @Schema(description = "Centro de costos", example = "CC001")
     private String cecos;
-    
-    @Schema(description = "Departamento", example = "Tecnología")
     private String departamento;
-    
-    @Schema(description = "Subdepartamento", example = "Desarrollo")
     private String subDepartamento;
-    
-    @Schema(description = "Centro de costos", example = "TI-2024")
     private String centroCostos;
     
-    @Schema(description = "Categoría de gasto", example = "Software")
     private String categoriaGasto;
     
-    @Schema(description = "Cuenta de gastos", example = "GASTOS-SW")
     private String cuentaGastos;
     
-    @Schema(description = "Nombre del producto/servicio", example = "Licencia Microsoft Office")
     private String nombre;
     
-    @Schema(description = "Presupuesto del departamento", example = "50000.00")
     private String presupuestoDepartamento;
     
-    @Schema(description = "Presupuesto del área", example = "200000.00")
     private String presupuestoArea;
     
-    @Schema(description = "Monto subtotal de la solicitud", example = "1500.00")
     private double montoSubtotal;
     
-    @Schema(description = "Estatus de confirmación", 
-            example = "PENDIENTE", 
-            allowableValues = {"PENDIENTE", "APROBADO", "RECHAZADO"})
     private String estatusConfirmacion;
     
-    @Schema(description = "Fecha de la solicitud", example = "2024-01-15")
     private String fecha;
     
-    @Schema(description = "Período presupuestario", example = "2024-Q1")
     private String periodoPresupuesto;
     
-    @Schema(description = "Empresa", example = "CDC")
     private String empresa;
     
-    @Schema(description = "Proveedor", example = "Microsoft Corporation")
     private String proveedor;
     
-    @Schema(description = "Fecha de creación del registro")
     private Instant fechaCreacion;
     
-    @Schema(description = "Fecha de última actualización")
     private Instant fechaActualizacion;
     
-    @Schema(description = "Usuario que creó el registro")
     private String creadoPor;
     
-    @Schema(description = "Usuario que actualizó por última vez")
     private String actualizadoPor;
     
-    @Schema(description = "Lista de archivos adjuntos")
     private List<String> archivosAdjuntos;
     
-    @Schema(description = "Comentarios adicionales")
     private String comentarios;
 
     public SolicitudPresupuesto() {}

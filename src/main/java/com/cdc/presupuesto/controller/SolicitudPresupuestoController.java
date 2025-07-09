@@ -4,12 +4,6 @@ import com.cdc.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.presupuesto.repository.SolicitudPresupuestoRepository;
 import com.cdc.presupuesto.service.UserInfoService;
 import com.cdc.presupuesto.util.UserAuthUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +23,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
-@Tag(name = "Solicitudes de Presupuesto", description = "API para gestionar solicitudes de presupuesto")
-@SecurityRequirement(name = "API Gateway Authentication")
+// ...eliminado: anotaciones de OpenAPI/Swagger
 public class SolicitudPresupuestoController {
 
     private static final Logger logger = LoggerFactory.getLogger(SolicitudPresupuestoController.class);
@@ -43,13 +36,7 @@ public class SolicitudPresupuestoController {
 
 
     @GetMapping
-    @Operation(summary = "Obtener todas las solicitudes de presupuesto", 
-               description = "Obtiene la lista de todas las solicitudes de presupuesto")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista de solicitudes obtenida exitosamente"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
+    // No Swagger/OpenAPI annotations
     public ResponseEntity<List<SolicitudPresupuesto>> getAllSolicitudes() {
         try {
             List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findAll();
@@ -61,14 +48,6 @@ public class SolicitudPresupuestoController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Obtener solicitud por ID", 
-               description = "Obtiene una solicitud de presupuesto específica por su ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solicitud encontrada"),
-        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<SolicitudPresupuesto> getSolicitudById(
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId) {
@@ -93,16 +72,7 @@ public class SolicitudPresupuestoController {
     }
 
     @PostMapping
-    @Operation(summary = "Crear nueva solicitud de presupuesto", 
-               description = "Crea una nueva solicitud de presupuesto en el sistema")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Solicitud creada exitosamente"),
-        @ApiResponse(responseCode = "400", description = "Datos de solicitud inválidos"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<SolicitudPresupuesto> createSolicitud(
-            @Parameter(description = "Datos de la nueva solicitud")
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
             // Obtener información del usuario autenticado
@@ -154,18 +124,9 @@ public class SolicitudPresupuestoController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Actualizar solicitud de presupuesto", 
-               description = "Actualiza una solicitud de presupuesto existente")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solicitud actualizada exitosamente"),
-        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<SolicitudPresupuesto> updateSolicitud(
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId,
-            @Parameter(description = "Datos actualizados de la solicitud")
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
             // Si no se proporciona solicitudId, usar el mismo ID
@@ -200,14 +161,6 @@ public class SolicitudPresupuestoController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar solicitud de presupuesto", 
-               description = "Elimina una solicitud de presupuesto del sistema")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Solicitud eliminada exitosamente"),
-        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<Map<String, String>> deleteSolicitud(
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId) {
@@ -234,13 +187,6 @@ public class SolicitudPresupuestoController {
     }
 
     @GetMapping("/usuario/{numeroEmpleado}")
-    @Operation(summary = "Obtener solicitudes por número de empleado", 
-               description = "Obtiene todas las solicitudes de un empleado específico")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Lista de solicitudes del empleado"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<List<SolicitudPresupuesto>> getSolicitudesByEmpleado(
             @PathVariable String numeroEmpleado) {
         try {
@@ -253,15 +199,6 @@ public class SolicitudPresupuestoController {
     }
 
     @PatchMapping("/{id}/estatus")
-    @Operation(summary = "Actualizar estatus de solicitud", 
-               description = "Actualiza únicamente el estatus de una solicitud (solo Admin)")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Estatus actualizado exitosamente"),
-        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "403", description = "Acceso denegado - Solo Admin"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<Map<String, Object>> updateEstatus(
             @PathVariable String id,
             @RequestParam(required = false) String solicitudId,
@@ -305,15 +242,6 @@ public class SolicitudPresupuestoController {
     }
     
     @PutMapping("/cambiar-estatus")
-    @Operation(summary = "Cambiar estatus de solicitud", 
-               description = "Cambia el estatus de una solicitud específica (solo Admin)")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Estatus actualizado exitosamente"),
-        @ApiResponse(responseCode = "404", description = "Solicitud no encontrada"),
-        @ApiResponse(responseCode = "403", description = "Acceso denegado - Solo Admin"),
-        @ApiResponse(responseCode = "401", description = "No autorizado"),
-        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-    })
     public ResponseEntity<Map<String, Object>> cambiarEstatus(
             @RequestBody Map<String, Object> request) {
         try {

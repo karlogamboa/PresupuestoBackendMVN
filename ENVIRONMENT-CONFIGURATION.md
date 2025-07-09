@@ -4,13 +4,13 @@ Este documento explica cómo configurar y usar los diferentes ambientes del sist
 
 ## Ambientes Disponibles
 
+
 ### 1. **Desarrollo (dev)**
 - **Perfil Spring**: `dev`
 - **Parameter Store**: `/fin/dev/presupuesto/*`
 - **Tablas DynamoDB**: `fin-dynamodb-dev-presupuesto-*`
 - **Características**:
   - Autenticación deshabilitada por defecto
-  - Swagger UI habilitado
   - CORS permisivo (localhost)
   - Logging nivel DEBUG
 
@@ -20,7 +20,6 @@ Este documento explica cómo configurar y usar los diferentes ambientes del sist
 - **Tablas DynamoDB**: `fin-dynamodb-qa-presupuesto-*`
 - **Características**:
   - Autenticación habilitada
-  - Swagger UI habilitado para pruebas
   - CORS configurado para QA frontend
   - Logging nivel INFO
 
@@ -30,7 +29,6 @@ Este documento explica cómo configurar y usar los diferentes ambientes del sist
 - **Tablas DynamoDB**: `fin-dynamodb-prod-presupuesto-*`
 - **Características**:
   - Autenticación habilitada
-  - Swagger UI deshabilitado
   - CORS estricto
   - Logging nivel WARN
 
@@ -152,6 +150,35 @@ aws dynamodb list-tables --query "TableNames[?starts_with(@, 'fin-dynamodb-qa-pr
 ## Arquitectura Lambda-First
 
 Este sistema está diseñado específicamente para AWS Lambda con las siguientes características:
+
+
+
+## Endpoints de Autenticación y Sesión
+
+El sistema soporta los siguientes endpoints relacionados con autenticación y sesión:
+
+- `POST /api/userInfo` - Obtiene la información del usuario actualmente autenticado.
+- `POST /api/logout` - Invalida la sesión del usuario.
+
+> **Nota:**
+> - En la arquitectura actual, `/api/userInfo` y `/api/logout` están implementados y gestionan la sesión del usuario autenticado a través del API Gateway Authorizer.
+> - Los endpoints `/auth/login` y `/auth/callback` ya no existen en el backend (el login es responsabilidad del API Gateway Authorizer).
+
+
+---
+
+### Seguridad del Flujo OAuth2
+
+- El backend implementa el flujo **OAuth2 Authorization Code Flow**. Esto garantiza que los tokens de Okta y el `client_secret` nunca se expongan al navegador.
+- Después de una autenticación exitosa, el backend genera su propio **JWT de sesión**. Este token se utiliza para proteger los endpoints de la API, en lugar de usar los tokens de Okta directamente en el cliente.
+
+### Flujo típico:
+
+1. El usuario accede a `/auth/login` y es redirigido a Okta para autenticación.
+2. Okta redirige a `/auth/callback` con un código de autorización.
+3. El backend intercambia el código por tokens y establece la sesión.
+4. El frontend puede consultar `/api/userInfo` para obtener los datos del usuario autenticado.
+5. El usuario puede cerrar sesión con `/api/logout`.
 
 ### ✅ Optimizaciones para Lambda
 - **Inicialización Lazy**: `spring.main.lazy-initialization=true`

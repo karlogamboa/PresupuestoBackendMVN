@@ -50,6 +50,7 @@ public class DynamoDbConfig {
                 .build();
     }
 
+
     @Bean
     public SesClient sesClient() {
         return SesClient.builder()

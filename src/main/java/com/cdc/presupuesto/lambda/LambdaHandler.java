@@ -22,7 +22,9 @@ public class LambdaHandler implements RequestHandler<AwsProxyRequest, AwsProxyRe
             synchronized (LOCK) {
                 if (handler == null) {
                     try {
-                        handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(PresupuestoBackendApplication.class, "lambda", "qa");
+                       handler = SpringBootLambdaContainerHandler.getAwsProxyHandler(PresupuestoBackendApplication.class, "lambda");
+                       
+                        logger.info("Lambda handler initialized successfully");
                     } catch (ContainerInitializationException e) {
                         logger.error("Could not initialize Spring Boot application", e);
                         throw new RuntimeException("Could not initialize Spring Boot application", e);
@@ -31,6 +33,11 @@ public class LambdaHandler implements RequestHandler<AwsProxyRequest, AwsProxyRe
             }
         }
         if (context != null) {
+            logger.info("Lambda context - Function: {}, Version: {}, Memory: {}MB, Timeout: {}ms",
+                       context.getFunctionName(), 
+                       context.getFunctionVersion(),
+                       context.getMemoryLimitInMB(),
+                       context.getRemainingTimeInMillis());
         }
         return handler.proxy(input, context);
     }

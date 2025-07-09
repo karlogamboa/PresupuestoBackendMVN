@@ -11,6 +11,7 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
+
     @Value("${cors.allowed-origins:*}")
     private String allowedOrigins;
 
@@ -21,7 +22,7 @@ public class CorsConfig {
     private String allowedHeaders;
 
     @Value("${cors.allow-credentials:true}")
-    private boolean allowCredentials;
+    private Boolean allowCredentials;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -29,7 +30,9 @@ public class CorsConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
         configuration.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
         configuration.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
-        configuration.setAllowCredentials(allowCredentials);
+        if (allowCredentials != null) {
+            configuration.setAllowCredentials(allowCredentials);
+        }
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

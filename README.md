@@ -1,35 +1,81 @@
+
+
 # Sistema de Gestión de Presupuestos - Backend
 
-Este es el backend del sistema de gestión de presupuestos desarrollado con Spring Boot para AWS Lambda, que incluye integración con AWS DynamoDB, autenticación via API Gateway Authorizer, y funcionalidad completa de gestión de presupuestos.
+Backend moderno para la gestión de presupuestos, desarrollado en **Spring Boot** y optimizado para **AWS Lambda**. Incluye integración con **DynamoDB**, autenticación y autorización vía **API Gateway Authorizer**, y notificaciones automáticas por **AWS SES**. El sistema está preparado para ambientes multi-entorno y sigue buenas prácticas de seguridad, configuración y despliegue serverless.
 
-## Características Principales
+## Cambios recientes (julio 2025)
+- Eliminado todo rastro de Spring Mail y Swagger/OpenAPI.
+- CORS global y seguro, configurable por Parameter Store.
+- Perfiles Spring: `lambda`, `dev`, `qa`, `prod`, y `!lambda` (local).
+- Email solo por AWS SES (bean `SesClient`).
+- Seguridad y roles solo por API Gateway Authorizer.
+- Documentación y scripts legacy movidos a archivos separados.
 
-### 🚀 Arquitectura Lambda-First
-- **AWS Lambda**: Función serverless optimizada con cold start mínimo
-- **API Gateway**: Endpoints REST con autenticación integrada
-- **DynamoDB**: Base de datos NoSQL completamente gestionada
-- **Parameter Store**: Configuración dinámica por ambiente
+## Arquitectura y Componentes
+...existing code...
 
-### 🔐 Autenticación y Autorización
-- **API Gateway Authorizer**: Autenticación a nivel de gateway
-- **Roles**: Sistema de roles Admin/User via headers
-- **Sin estado**: Diseño completamente stateless para Lambda
+## Arquitectura y Componentes
 
-### 👥 Gestión de Solicitantes
-- **CRUD completo**: Crear, leer, actualizar, eliminar solicitantes
-- **Importación CSV**: Importación masiva desde archivos CSV
-- **Validaciones**: Email único, datos consistentes
-- **Template CSV**: Descarga de template para importación
+- **Spring Boot**: Framework principal, desacoplado de Tomcat para ejecución serverless.
+- **AWS Lambda**: Ejecución serverless, cold start optimizado, sin estado.
+- **API Gateway**: Expone endpoints REST, maneja autenticación y roles vía headers personalizados (`x-user-id`, `x-user-email`, `x-user-roles`).
+- **DynamoDB**: Base de datos NoSQL, con prefijos de tabla por ambiente (`dev`, `qa`, `prod`, `lambda`).
+- **AWS Parameter Store**: Configuración dinámica de CORS y otros parámetros sensibles.
+- **AWS SES**: Envío de notificaciones por email, centralizado en `EmailService`.
 
-### 💰 Gestión de Presupuestos
-- **Solicitudes**: Crear y gestionar solicitudes de presupuesto
-- **Áreas y Departamentos**: Gestión jerárquica de estructura organizacional
-- **Proveedores**: Gestión de proveedores y categorías de gasto
-- **Notificaciones**: Envío automático de emails via Amazon SES
+## Perfiles y Configuración
 
-### 📊 Base de Datos y Configuración
-- **DynamoDB**: Almacenamiento NoSQL con prefijos por ambiente
-- **Tablas Dinámicas**: Prefijos configurables (dev/qa/prod)
+- **Perfiles Spring**: `lambda`, `dev`, `qa`, `prod`, y `!lambda` (local). Cada uno ajusta endpoints, CORS, y credenciales.
+- **CORS**: Filtro global (`GlobalCorsHeaderFilterConfig`) asegura headers correctos y personalizados en todas las respuestas, con valores obtenidos de Parameter Store.
+- **Seguridad**: Autenticación y autorización gestionadas por API Gateway. El backend valida y expone el contexto de usuario y roles.
+- **Logging**: Configuración robusta para ambientes Lambda y locales.
+
+## Funcionalidad Principal
+
+- **Gestión de Solicitantes**: CRUD, importación masiva por CSV, validaciones de unicidad y consistencia.
+- **Gestión de Presupuestos**: CRUD, jerarquía de áreas/departamentos, proveedores, categorías de gasto.
+- **Notificaciones**: Emails automáticos por eventos clave usando AWS SES.
+- **Salud y Debug**: Endpoints `/health`, `/api/userInfo`, `/api/debug/*` para monitoreo y pruebas.
+
+## Integraciones AWS
+
+- **DynamoDB**: Acceso desacoplado por repositorios, uso de prefijos de tabla por ambiente.
+- **SES**: Toda la lógica de email centralizada en `EmailService`, sin dependencias de Spring Mail.
+- **Parameter Store**: Uso recomendado para orígenes CORS, credenciales y parámetros sensibles.
+
+## Limpieza y Buenas Prácticas
+
+- **Swagger/OpenAPI**: Eliminado del proyecto para reducir superficie de ataque y dependencias innecesarias.
+- **Spring Mail**: Eliminado; toda la mensajería usa AWS SES.
+- **Filtros y Seguridad**: Filtros de CORS y autenticación implementados como `OncePerRequestFilter` y configurados globalmente.
+- **Validación y Refactorización**: Controladores revisados para evitar duplicación y mejorar validación con anotaciones.
+
+## Despliegue y Ejecución
+
+1. **Compilar**: `mvn clean package -DskipTests`
+2. **Desplegar**: Subir el JAR generado a AWS Lambda (handler: `com.cdc.presupuesto.lambda.LambdaHandler`)
+3. **Configurar**: Ajustar variables de entorno y Parameter Store para cada ambiente (`aws.region`, `aws.dynamodb.table.prefix`, CORS, etc.)
+
+## Endpoints Principales
+
+- `/health`: Estado del servicio
+- `/api/userInfo`: Información del usuario autenticado
+- `/api/solicitudes-presupuesto`: CRUD de solicitudes
+- `/api/solicitantes`: CRUD de solicitantes
+- `/api/areas`, `/api/departamentos`, `/api/subdepartamentos`: Gestión organizacional
+- `/api/proveedores`, `/api/categorias-gasto`: Gestión de proveedores y categorías
+
+## Notas y Recomendaciones
+
+- **Swagger y Spring Mail**: Eliminados completamente. No agregar dependencias ni configuraciones relacionadas.
+- **CORS**: Configurado globalmente, personalizable por Parameter Store.
+- **Perfiles**: Usar el perfil adecuado para cada entorno (`lambda` para producción Lambda, `!lambda` para local).
+- **Documentación**: Mantener este README actualizado ante cambios de arquitectura o dependencias.
+
+---
+
+_Última actualización: julio 2025_
 - **Enhanced Client**: DynamoDB Enhanced Client para operaciones optimizadas
 - **Parameter Store**: Configuración centralizada y dinámica
 

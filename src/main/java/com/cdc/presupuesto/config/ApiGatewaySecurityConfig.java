@@ -28,39 +28,27 @@ public class ApiGatewaySecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors() // Habilita CORS explícitamente
-            .and()
-            // Disable CSRF for stateless API
+            .cors(cors -> {})
             .csrf(csrf -> csrf.disable())
-            
-            // Configure session management as stateless
-            .sessionManagement(session -> 
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-            
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
         if (authEnabled) {
             // Authentication ENABLED - normal Lambda production mode
             http.authorizeHttpRequests(authz -> authz
-                // Allow health check and OpenAPI endpoints
+                // Allow health check endpoints only (Swagger/OpenAPI removed)
                 .requestMatchers(
                     "/health",
-                    "/actuator/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html"
+                    "/actuator/**"
                 ).permitAll()
-                
                 // Allow public endpoints for testing/health check
                 .requestMatchers(
                     "/api/debug/**"
                 ).permitAll()
-                
                 // All other requests require authentication (handled by API Gateway)
                 .anyRequest().authenticated()
             )
-            
             // Add custom filter to extract user context from API Gateway headers
-            .addFilterBefore(new ApiGatewayAuthenticationFilter(), 
-                UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new ApiGatewayAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         } else {
             // Authentication DISABLED - Lambda testing mode (NO AUTHENTICATION)
             http.authorizeHttpRequests(authz -> authz

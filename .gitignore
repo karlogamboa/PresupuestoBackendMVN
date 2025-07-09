@@ -184,6 +184,13 @@ dynamodb-scripts/
 !dynamodb-scripts/*.sh
 !dynamodb-scripts/*.bat
 
+# AWS scripts
+aws-scripts/
+
+# Layer dependencies
+layer.zip
+java/lib/
+
 # Lambda specific ignores
 *.zip
 lambda-deployment-package.zip
@@ -259,3 +266,12 @@ data/
 deploy-scripts/
 dynamodb-scripts/
 aws-scripts/
+
+#GitHub Actions workflows
+.github/
+
+#VS Code settings
+.vscode/
+
+# Maven target directory
+target/
