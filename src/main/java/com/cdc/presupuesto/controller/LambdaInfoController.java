@@ -23,20 +23,16 @@ public class LambdaInfoController {
         info.put("status", "running");
         info.put("environment", "lambda");
         info.put("functionUrl", lambdaFunctionUrl.isEmpty() ? "Not configured" : lambdaFunctionUrl);
-
+        
         // Available endpoints
         Map<String, String> endpoints = new HashMap<>();
         endpoints.put("health", "/health");
-        endpoints.put("userInfo", "/api/userInfo");
         endpoints.put("solicitudes", "/api/solicitudes-presupuesto");
-        endpoints.put("usuarios", "/api/usuarios");
-        endpoints.put("areas", "/api/areas");
         endpoints.put("departamentos", "/api/departamentos");
-        endpoints.put("subdepartamentos", "/api/subdepartamentos");
         endpoints.put("proveedores", "/api/proveedores");
         endpoints.put("categorias", "/api/categorias-gasto");
         info.put("endpoints", endpoints);
-
+        
         // Handler/runtime info
         info.put("handler", "com.amazonaws.serverless.proxy.spring.SpringBootProxyHandler::handleRequest");
         info.put("runtime", "java21");
@@ -46,15 +42,14 @@ public class LambdaInfoController {
         runtime.put("activeProfiles", System.getProperty("spring.profiles.active", "default"));
         info.put("runtimeInfo", runtime);
 
-       
+
         return ResponseEntity.ok()
                 .header("Access-Control-Allow-Origin", allowedOrigins)
-                .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token")
+                .header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,x-user-id,x-user-roles,x-user-email")
                 .header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
                 .body(info);
     }
 
-    // Endpoint de redirección a Swagger eliminado
 }
 
 

@@ -28,14 +28,14 @@ public class ApiGatewaySecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> {})
+            .cors() // Habilita CORS explícitamente
+            .and()
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
+        
         if (authEnabled) {
             // Authentication ENABLED - normal Lambda production mode
             http.authorizeHttpRequests(authz -> authz
-                // Allow health check endpoints only (Swagger/OpenAPI removed)
                 .requestMatchers(
                     "/health",
                     "/actuator/**"

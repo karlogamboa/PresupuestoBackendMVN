@@ -1,18 +1,39 @@
-<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3"
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0 
+          http://maven.apache.org/xsd/assembly-2.1.0.xsd">
     <id>lambda-layer</id>
     <formats>
         <format>zip</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <fileSets>
-        <fileSet>
-            <directory>${project.build.directory}/layer/lib</directory>
+    
+    <dependencySets>
+        <dependencySet>
             <outputDirectory>java/lib</outputDirectory>
+            <useProjectArtifact>false</useProjectArtifact>
             <includes>
-                <include>**/*.jar</include>
+                <!-- AWS SDK Dependencies -->
+                <include>software.amazon.awssdk:*</include>
+                <include>com.amazonaws:*</include>
+                <include>com.amazonaws.serverless:*</include>
+                <!-- Spring Framework Dependencies -->
+                <include>org.springframework:*</include>
+                <include>org.springframework.boot:*</include>
+                <include>org.springframework.security:*</include>
+                <!-- Jackson Dependencies -->
+                <include>com.fasterxml.jackson.core:*</include>
+                <include>com.fasterxml.jackson.databind:*</include>
+                <include>com.fasterxml.jackson.datatype:*</include>
+                <!-- Logging Dependencies -->
+                <include>ch.qos.logback:*</include>
+                <include>org.slf4j:*</include>
+                <!-- Other common dependencies -->
+                <include>io.jsonwebtoken:*</include>
+                <include>com.opencsv:*</include>
+                <include>org.springdoc:*</include>
+                <include>io.awspring.cloud:*</include>
             </includes>
-        </fileSet>
-    </fileSets>
+        </dependencySet>
+    </dependencySets>
 </assembly>
