@@ -33,9 +33,9 @@ public class SolicitanteService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Solicitante> solicitanteTable;
 
     @Autowired(required = false)
-    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante:solicitantes}") String solicitanteTableName) {
+    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante:fin-dynamodb-qa-presupuesto-solicitantes}") String solicitanteTableName) {
         if (dynamoDbEnhancedClient != null) {
-            this.solicitanteTable = dynamoDbEnhancedClient.table(solicitanteTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
+            this.solicitanteTable = dynamoDbEnhancedClient.table("fin-dynamodb-qa-presupuesto-solicitantes", software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
         }
     }
 
@@ -45,18 +45,23 @@ public class SolicitanteService {
             return;
         }
         int batchSize = 25;
-        for (int i = 0; i < solicitantes.size(); i += batchSize) {
-            List<Solicitante> batch = solicitantes.subList(i, Math.min(i + batchSize, solicitantes.size()));
-            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<Solicitante> writeBatchBuilder =
-                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(Solicitante.class)
-                    .mappedTableResource(solicitanteTable);
-            for (Solicitante solicitante : batch) {
-                writeBatchBuilder.addPutItem(solicitante);
+        try {
+            for (int i = 0; i < solicitantes.size(); i += batchSize) {
+                List<Solicitante> batch = solicitantes.subList(i, Math.min(i + batchSize, solicitantes.size()));
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<Solicitante> writeBatchBuilder =
+                    software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(Solicitante.class)
+                        .mappedTableResource(solicitanteTable);
+                for (Solicitante solicitante : batch) {
+                    writeBatchBuilder.addPutItem(solicitante);
+                }
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                    software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+                batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+                dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
             }
-            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
-                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
-            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
-            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        } catch (software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException e) {
+            logger.error("La tabla DynamoDB no existe o el nombre es incorrecto: {}", e.getMessage());
+            throw new RuntimeException("Error: La tabla DynamoDB para solicitantes no existe o el nombre es incorrecto. Verifica la configuración.");
         }
     }
 
