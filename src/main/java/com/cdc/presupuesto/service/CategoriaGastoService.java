@@ -34,7 +34,7 @@ public class CategoriaGastoService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<CategoriaGasto> categoriaGastoTable;
 
     @Autowired(required = false)
-    public void setCategoriaGastoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.categoriaGasto:categorias_gasto}") String categoriaGastoTableName) {
+    public void setCategoriaGastoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.categoriaGasto:categorias-gasto}") String categoriaGastoTableName) {
         if (dynamoDbEnhancedClient != null) {
             this.categoriaGastoTable = dynamoDbEnhancedClient.table(categoriaGastoTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(CategoriaGasto.class));
         }
@@ -66,18 +66,23 @@ public class CategoriaGastoService {
             return;
         }
         int batchSize = 25;
-        for (int i = 0; i < categorias.size(); i += batchSize) {
-            List<CategoriaGasto> batch = categorias.subList(i, Math.min(i + batchSize, categorias.size()));
-            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<CategoriaGasto> writeBatchBuilder =
-                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(CategoriaGasto.class)
-                    .mappedTableResource(categoriaGastoTable);
-            for (CategoriaGasto categoria : batch) {
-                writeBatchBuilder.addPutItem(categoria);
+        try {
+            for (int i = 0; i < categorias.size(); i += batchSize) {
+                List<CategoriaGasto> batch = categorias.subList(i, Math.min(i + batchSize, categorias.size()));
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<CategoriaGasto> writeBatchBuilder =
+                    software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(CategoriaGasto.class)
+                        .mappedTableResource(categoriaGastoTable);
+                for (CategoriaGasto categoria : batch) {
+                    writeBatchBuilder.addPutItem(categoria);
+                }
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                    software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+                batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+                dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
             }
-            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
-                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
-            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
-            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        } catch (software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException e) {
+            logger.error("La tabla DynamoDB no existe o el nombre es incorrecto: {}", e.getMessage());
+            throw new RuntimeException("Error: La tabla DynamoDB para categorías de gasto no existe o el nombre es incorrecto. Verifica la configuración.");
         }
     }
 
