@@ -8,8 +8,10 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +21,9 @@ import java.util.stream.Collectors;
 public class DepartamentoRepository {
 
     private final DynamoDbTable<Departamento> table;
+
+    @Autowired
+    private DynamoDbEnhancedClient enhancedClient;
 
     @Autowired
     public DepartamentoRepository(DynamoDbEnhancedClient enhancedClient,
@@ -56,8 +61,14 @@ public class DepartamentoRepository {
     }
 
     public void saveAll(List<Departamento> departamentos) {
-        for (Departamento departamento : departamentos) {
-            save(departamento);
+        final int BATCH_SIZE = 25;
+        for (int i = 0; i < departamentos.size(); i += BATCH_SIZE) {
+            List<Departamento> batch = departamentos.subList(i, Math.min(i + BATCH_SIZE, departamentos.size()));
+            WriteBatch.Builder<Departamento> writeBatchBuilder = WriteBatch.builder(Departamento.class).mappedTableResource(table);
+            batch.forEach(writeBatchBuilder::addPutItem);
+            enhancedClient.batchWriteItem(BatchWriteItemEnhancedRequest.builder()
+                .writeBatches(writeBatchBuilder.build())
+                .build());
         }
     }
 }

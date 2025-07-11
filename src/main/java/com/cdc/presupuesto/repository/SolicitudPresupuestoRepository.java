@@ -8,10 +8,12 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +23,9 @@ import java.util.stream.Collectors;
 public class SolicitudPresupuestoRepository {
 
     private final DynamoDbTable<SolicitudPresupuesto> table;
+
+    @Autowired
+    private DynamoDbEnhancedClient enhancedClient;
 
     @Autowired
     public SolicitudPresupuestoRepository(DynamoDbEnhancedClient enhancedClient,
@@ -80,8 +85,14 @@ public class SolicitudPresupuestoRepository {
     }
 
     public void saveAll(List<SolicitudPresupuesto> solicitudes) {
-        for (SolicitudPresupuesto solicitud : solicitudes) {
-            save(solicitud);
+        final int BATCH_SIZE = 25;
+        for (int i = 0; i < solicitudes.size(); i += BATCH_SIZE) {
+            List<SolicitudPresupuesto> batch = solicitudes.subList(i, Math.min(i + BATCH_SIZE, solicitudes.size()));
+            WriteBatch.Builder<SolicitudPresupuesto> writeBatchBuilder = WriteBatch.builder(SolicitudPresupuesto.class).mappedTableResource(table);
+            batch.forEach(writeBatchBuilder::addPutItem);
+            enhancedClient.batchWriteItem(BatchWriteItemEnhancedRequest.builder()
+                .writeBatches(writeBatchBuilder.build())
+                .build());
         }
     }
 }

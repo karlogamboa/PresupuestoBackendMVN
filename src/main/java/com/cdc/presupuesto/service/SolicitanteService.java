@@ -34,6 +34,13 @@ public class SolicitanteService {
         return solicitanteRepository.findByNumEmpleado(numEmpleado).orElse(null);
     }
 
+    public Solicitante getSolicitanteByCorreoElectronico(String correoElectronico) {
+        return solicitanteRepository.findAll().stream()
+            .filter(s -> s.getCorreoElectronico() != null && s.getCorreoElectronico().equalsIgnoreCase(correoElectronico))
+            .findFirst()
+            .orElse(null);
+    }
+
     public Solicitante saveSolicitante(Solicitante solicitante) {
         return solicitanteRepository.save(solicitante);
     }
@@ -141,8 +148,8 @@ public class SolicitanteService {
             
             // Save all valid solicitantes
             if (!solicitantes.isEmpty()) {
-                logger.info("Saving {} solicitantes to database", solicitantes.size());
-                solicitanteRepository.saveAll(solicitantes);
+                logger.info("Saving {} solicitantes to database (batch)", solicitantes.size());
+                solicitanteRepository.saveAllBatch(solicitantes);
             }
             
         } catch (IOException e) {

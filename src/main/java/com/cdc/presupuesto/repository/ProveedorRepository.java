@@ -8,8 +8,10 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +21,9 @@ import java.util.stream.Collectors;
 public class ProveedorRepository {
 
     private final DynamoDbTable<Proveedor> table;
+
+    @Autowired
+    private DynamoDbEnhancedClient enhancedClient;
 
     @Autowired
     public ProveedorRepository(DynamoDbEnhancedClient enhancedClient,
@@ -56,8 +61,14 @@ public class ProveedorRepository {
     }
 
     public void saveAll(List<Proveedor> proveedores) {
-        for (Proveedor proveedor : proveedores) {
-            save(proveedor);
+        final int BATCH_SIZE = 25;
+        for (int i = 0; i < proveedores.size(); i += BATCH_SIZE) {
+            List<Proveedor> batch = proveedores.subList(i, Math.min(i + BATCH_SIZE, proveedores.size()));
+            WriteBatch.Builder<Proveedor> writeBatchBuilder = WriteBatch.builder(Proveedor.class).mappedTableResource(table);
+            batch.forEach(writeBatchBuilder::addPutItem);
+            enhancedClient.batchWriteItem(BatchWriteItemEnhancedRequest.builder()
+                .writeBatches(writeBatchBuilder.build())
+                .build());
         }
     }
 }

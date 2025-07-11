@@ -4,10 +4,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -20,11 +22,17 @@ import java.util.stream.Collectors;
  * Authentication filter for API Gateway Authorizer
  * Extracts user information from headers set by API Gateway
  */
+@Component
 public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String USER_EMAIL_HEADER = "x-user-email";
-    private static final String USER_ROLES_HEADER = "x-user-roles";
-    private static final String USER_NAME_HEADER = "x-user-name";
+    @Value("${api.gateway.email.header.name:x-user-email}")
+    private String userEmailHeader;
+    @Value("${api.gateway.roles.header.name:x-user-roles}")
+    private String userRolesHeader;
+    @Value("${api.gateway.user.header.name:x-user-id}")
+    private String userIdHeader;
+    @Value("${api.gateway.name.header.name:x-user-name}")
+    private String userNameHeader;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -32,9 +40,10 @@ public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         // Extract user information from API Gateway headers
-        String userEmail = request.getHeader(USER_EMAIL_HEADER);
-        String userRoles = request.getHeader(USER_ROLES_HEADER);
-        String userName = request.getHeader(USER_NAME_HEADER);
+        String userEmail = request.getHeader(userEmailHeader);
+        String userRoles = request.getHeader(userRolesHeader);
+        String userId = request.getHeader(userIdHeader);
+        String userName = request.getHeader(userNameHeader);
 
         // If user ID is present, create authentication
         if (userEmail != null && !userEmail.trim().isEmpty()) {
@@ -44,7 +53,7 @@ public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
 
             // Create principal with user information
             ApiGatewayUserPrincipal principal = new ApiGatewayUserPrincipal(
-                null, userName != null ? userName : userEmail, userEmail);
+                userId, userName != null ? userName : userEmail, userEmail);
 
             // Create authentication token
             UsernamePasswordAuthenticationToken authentication =

@@ -8,8 +8,10 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +21,9 @@ import java.util.stream.Collectors;
 public class CategoriaGastoRepository {
 
     private final DynamoDbTable<CategoriaGasto> table;
+
+    @Autowired
+    private DynamoDbEnhancedClient enhancedClient;
 
     @Autowired
     public CategoriaGastoRepository(DynamoDbEnhancedClient enhancedClient,
@@ -56,8 +61,14 @@ public class CategoriaGastoRepository {
     }
 
     public void saveAll(List<CategoriaGasto> categorias) {
-        for (CategoriaGasto categoria : categorias) {
-            save(categoria);
+        final int BATCH_SIZE = 25;
+        for (int i = 0; i < categorias.size(); i += BATCH_SIZE) {
+            List<CategoriaGasto> batch = categorias.subList(i, Math.min(i + BATCH_SIZE, categorias.size()));
+            WriteBatch.Builder<CategoriaGasto> writeBatchBuilder = WriteBatch.builder(CategoriaGasto.class).mappedTableResource(table);
+            batch.forEach(writeBatchBuilder::addPutItem);
+            enhancedClient.batchWriteItem(BatchWriteItemEnhancedRequest.builder()
+                .writeBatches(writeBatchBuilder.build())
+                .build());
         }
     }
 }
