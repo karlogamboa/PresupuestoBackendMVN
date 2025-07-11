@@ -33,9 +33,10 @@ public class SolicitanteService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Solicitante> solicitanteTable;
 
     @Autowired(required = false)
-    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante:fin-dynamodb-qa-presupuesto-solicitantes}") String solicitanteTableName) {
+    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante}") String solicitanteTableName) {
         if (dynamoDbEnhancedClient != null) {
-            this.solicitanteTable = dynamoDbEnhancedClient.table("fin-dynamodb-qa-presupuesto-solicitantes", software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
+            // El nombre debe ser exactamente el de la tabla DynamoDB
+            this.solicitanteTable = dynamoDbEnhancedClient.table(solicitanteTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
         }
     }
 
