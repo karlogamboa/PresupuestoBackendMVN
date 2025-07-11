@@ -26,6 +26,40 @@ public class SolicitanteService {
     @Autowired
     private SolicitanteRepository solicitanteRepository;
 
+    // Bulk insert solicitantes using DynamoDB batchWrite
+    @Autowired(required = false)
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient dynamoDbEnhancedClient;
+
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Solicitante> solicitanteTable;
+
+    @Autowired(required = false)
+    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante:solicitantes}") String solicitanteTableName) {
+        if (dynamoDbEnhancedClient != null) {
+            this.solicitanteTable = dynamoDbEnhancedClient.table(solicitanteTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
+        }
+    }
+
+    private void batchInsertSolicitantes(List<Solicitante> solicitantes) {
+        if (dynamoDbEnhancedClient == null || solicitanteTable == null) {
+            solicitanteRepository.saveAll(solicitantes);
+            return;
+        }
+        int batchSize = 25;
+        for (int i = 0; i < solicitantes.size(); i += batchSize) {
+            List<Solicitante> batch = solicitantes.subList(i, Math.min(i + batchSize, solicitantes.size()));
+            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<Solicitante> writeBatchBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(Solicitante.class)
+                    .mappedTableResource(solicitanteTable);
+            for (Solicitante solicitante : batch) {
+                writeBatchBuilder.addPutItem(solicitante);
+            }
+            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        }
+    }
+
     public List<Solicitante> getAllSolicitantes() {
         return solicitanteRepository.findAll();
     }
@@ -76,7 +110,7 @@ public class SolicitanteService {
                     // ... 31: Aprobador de gastos, ... 40: ID interno
                     
                     if (record.length < 41) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 41, got " + record.length + ")");
+                        errors.add("Línea " + rowNumber + ": Columnas insuficientes (se esperaban 41, se obtuvieron " + record.length + ")");
                         errorCount++;
                         continue;
                     }
@@ -85,10 +119,10 @@ public class SolicitanteService {
                     
                     // Use ID interno as NumEmpleado (last column - index 40)
                     String idInternoStr = getColumnValue(record, 40);
-                    logger.debug("Row {}: ID interno = '{}'", rowNumber, idInternoStr);
+                    logger.debug("Línea {}: ID interno = '{}'", rowNumber, idInternoStr);
                     
                     if (idInternoStr.isEmpty()) {
-                        errors.add("Row " + rowNumber + ": ID interno is required as NumEmpleado");
+                        errors.add("Línea " + rowNumber + ": El campo 'ID interno' es requerido como 'NumEmpleado'");
                         errorCount++;
                         continue;
                     }
@@ -98,7 +132,7 @@ public class SolicitanteService {
                         solicitante.setIdInterno(idInterno);
                         solicitante.setNumEmpleado(idInternoStr); // Use ID interno as NumEmpleado
                     } catch (NumberFormatException e) {
-                        errors.add("Row " + rowNumber + ": Invalid ID interno format: " + idInternoStr);
+                        errors.add("Línea " + rowNumber + ": Formato inválido para 'ID interno': " + idInternoStr);
                         errorCount++;
                         continue;
                     }
@@ -122,21 +156,21 @@ public class SolicitanteService {
                     
                     // Validate required fields
                     if (solicitante.getNumEmpleado().isEmpty() || solicitante.getNombre().isEmpty()) {
-                        errors.add("Row " + rowNumber + ": NumEmpleado and Nombre are required fields");
+                        errors.add("Línea " + rowNumber + ": Los campos 'NumEmpleado' y 'Nombre' son requeridos");
                         errorCount++;
                         continue;
                     }
                     
-                    logger.debug("Row {}: Created solicitante with NumEmpleado={}, Nombre='{}'", 
+                    logger.debug("Línea {}: Solicitante creado con NumEmpleado={}, Nombre='{}'", 
                                rowNumber, solicitante.getNumEmpleado(), solicitante.getNombre());
                     
                     solicitantes.add(solicitante);
                     successCount++;
                     
                 } catch (Exception e) {
-                    errors.add("Row " + rowNumber + ": Error processing record - " + e.getMessage());
+                    errors.add("Línea " + rowNumber + ": Error procesando el registro - " + e.getMessage());
                     errorCount++;
-                    logger.error("Error processing CSV row {}: {}", rowNumber, e.getMessage());
+                    logger.error("Error procesando la línea CSV {}: {}", rowNumber, e.getMessage());
                 }
             }
             
@@ -146,12 +180,6 @@ public class SolicitanteService {
                 solicitanteRepository.deleteAll();
             }
             
-            // Save all valid solicitantes
-            if (!solicitantes.isEmpty()) {
-                logger.info("Saving {} solicitantes to database (batch)", solicitantes.size());
-                solicitanteRepository.saveAllBatch(solicitantes);
-            }
-            
         } catch (IOException e) {
             logger.error("Error reading CSV file: {}", e.getMessage());
             throw new IOException("Error reading CSV file: " + e.getMessage(), e);
@@ -159,7 +187,12 @@ public class SolicitanteService {
             logger.error("Error parsing CSV file: {}", e.getMessage());
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
-        
+
+        // Inserta en lote solo si no hay errores
+        if (errorCount == 0 && !solicitantes.isEmpty()) {
+            batchInsertSolicitantes(solicitantes);
+        }
+
         // Prepare response
         Map<String, Object> result = new HashMap<>();
         result.put("success", errorCount == 0);
@@ -167,9 +200,12 @@ public class SolicitanteService {
         result.put("successCount", successCount);
         result.put("errorCount", errorCount);
         result.put("errors", errors);
-        result.put("message", String.format("Import completed: %d successful, %d errors", successCount, errorCount));
-        
-        logger.info("CSV import completed. Success: {}, Errors: {}", successCount, errorCount);
+        if (errorCount > 0) {
+            result.put("message", String.format("Importación completada con advertencias: %d exitosos, %d errores/omitidos. Consulta el detalle de errores.", successCount, errorCount));
+        } else {
+            result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
+        }
+        logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
         
         return result;
     }

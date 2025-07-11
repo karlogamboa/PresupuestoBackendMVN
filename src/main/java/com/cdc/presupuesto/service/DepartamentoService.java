@@ -27,6 +27,40 @@ public class DepartamentoService {
     @Autowired
     private DepartamentoRepository departamentoRepository;
 
+    // Bulk insert departamentos using DynamoDB batchWrite
+    @Autowired(required = false)
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient dynamoDbEnhancedClient;
+
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Departamento> departamentoTable;
+
+    @Autowired(required = false)
+    public void setDepartamentoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.departamento:departamentos}") String departamentoTableName) {
+        if (dynamoDbEnhancedClient != null) {
+            this.departamentoTable = dynamoDbEnhancedClient.table(departamentoTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Departamento.class));
+        }
+    }
+
+    private void batchInsertDepartamentos(List<Departamento> departamentos) {
+        if (dynamoDbEnhancedClient == null || departamentoTable == null) {
+            departamentoRepository.saveAll(departamentos);
+            return;
+        }
+        int batchSize = 25;
+        for (int i = 0; i < departamentos.size(); i += batchSize) {
+            List<Departamento> batch = departamentos.subList(i, Math.min(i + batchSize, departamentos.size()));
+            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<Departamento> writeBatchBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(Departamento.class)
+                    .mappedTableResource(departamentoTable);
+            for (Departamento departamento : batch) {
+                writeBatchBuilder.addPutItem(departamento);
+            }
+            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        }
+    }
+
     public List<Departamento> getAllDepartamentos() {
         return departamentoRepository.findAll();
     }
@@ -62,7 +96,7 @@ public class DepartamentoService {
                 
                 try {
                     if (record.length != 3) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 3, got " + record.length + ")");
+                        errors.add("Línea " + rowNumber + ": Columnas insuficientes (se esperaban 3, se obtuvieron " + record.length + ")");
                         errorCount++;
                         continue;
                     }
@@ -72,29 +106,24 @@ public class DepartamentoService {
                     departamento.setNombreDepartamento(record[0].trim());
                     departamento.setSubDepartamento(record[1].trim());
                     departamento.setCeco(record[2].trim());
-                    // Validate required fields
+                    // Validar campos requeridos
                     if (departamento.getNombreDepartamento().isEmpty()) {
-                        errors.add("Row " + rowNumber + ": Nombre Departamento is required");
+                        errors.add("Línea " + rowNumber + ": El campo 'Nombre Departamento' es requerido");
                         errorCount++;
                         continue;
                     }
                     departamentos.add(departamento);
                     successCount++;
                 } catch (Exception e) {
-                    errors.add("Row " + rowNumber + ": Error processing record - " + e.getMessage());
+                    errors.add("Línea " + rowNumber + ": Error procesando el registro - " + e.getMessage());
                     errorCount++;
-                    logger.error("Error processing CSV row {}: {}", rowNumber, e.getMessage());
+                    logger.error("Error procesando la línea CSV {}: {}", rowNumber, e.getMessage());
                 }
             }
             
             // If replace all is true, delete all existing departamentos first
             if (replaceAll && !departamentos.isEmpty()) {
                 departamentoRepository.deleteAll();
-            }
-            
-            // Save all valid departamentos
-            if (!departamentos.isEmpty()) {
-                departamentoRepository.saveAll(departamentos);
             }
             
         } catch (IOException e) {
@@ -104,7 +133,12 @@ public class DepartamentoService {
             logger.error("Error parsing CSV file: {}", e.getMessage());
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
-        
+
+        // Inserta en lote solo si no hay errores
+        if (errorCount == 0 && !departamentos.isEmpty()) {
+            batchInsertDepartamentos(departamentos);
+        }
+
         // Prepare response
         Map<String, Object> result = new HashMap<>();
         result.put("success", errorCount == 0);
@@ -112,8 +146,11 @@ public class DepartamentoService {
         result.put("successCount", successCount);
         result.put("errorCount", errorCount);
         result.put("errors", errors);
-        result.put("message", String.format("Import completed: %d successful, %d errors", successCount, errorCount));
-        
+        if (errorCount > 0) {
+            result.put("message", String.format("Importación completada con advertencias: %d exitosos, %d errores/omitidos. Consulta el detalle de errores.", successCount, errorCount));
+        } else {
+            result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
+        }
         return result;
     }
 }

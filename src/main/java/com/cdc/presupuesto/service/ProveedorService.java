@@ -21,6 +21,18 @@ import java.util.HashMap;
 
 @Service
 public class ProveedorService {
+    @Autowired(required = false)
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient dynamoDbEnhancedClient;
+
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Proveedor> proveedorTable;
+
+    @Autowired(required = false)
+    public void setProveedorTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.proveedor:proveedores}") String proveedorTableName) {
+        if (dynamoDbEnhancedClient != null) {
+            this.proveedorTable = dynamoDbEnhancedClient.table(proveedorTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Proveedor.class));
+        }
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(ProveedorService.class);
 
     @Autowired
@@ -42,98 +54,98 @@ public class ProveedorService {
         proveedorRepository.deleteById(id);
     }
 
+    /**
+     * Bulk insert proveedores using DynamoDB batchWrite.
+     * Falls back to saveAll if DynamoDB Enhanced Client is not configured.
+     */
+    private void batchInsertProveedores(List<Proveedor> proveedores) {
+        if (dynamoDbEnhancedClient == null || proveedorTable == null) {
+            logger.warn("DynamoDbEnhancedClient or proveedorTable not configured, falling back to saveAll");
+            proveedorRepository.saveAll(proveedores);
+            return;
+        }
+        int batchSize = 25; // DynamoDB batch write limit
+        for (int i = 0; i < proveedores.size(); i += batchSize) {
+            List<Proveedor> batch = proveedores.subList(i, Math.min(i + batchSize, proveedores.size()));
+            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<Proveedor> writeBatchBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(Proveedor.class)
+                    .mappedTableResource(proveedorTable);
+            for (Proveedor proveedor : batch) {
+                writeBatchBuilder.addPutItem(proveedor);
+            }
+            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        }
+    }
+
+    /**
+     * Import proveedores from CSV file.
+     * @param file CSV file
+     * @param replaceAll If true, deletes all existing proveedores before import
+     * @return Map with import summary and errors
+     */
     public Map<String, Object> importProveedoresFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
-        List<Proveedor> proveedores = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;
-        List<String> errors = new ArrayList<>();
+        List<Proveedor> proveedores = new ArrayList<>();
 
         try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))
-                .withSkipLines(1) // Skip header
+                .withSkipLines(1)
                 .build()) {
-            
-            List<String[]> records = csvReader.readAll();
-            
-            for (int i = 0; i < records.size(); i++) {
-                String[] record = records.get(i);
-                int rowNumber = i + 2; // +2 because we skip header and arrays are 0-indexed
-                
-                logger.debug("Processing row {}: {} columns", rowNumber, record.length);
-                
-                try {
-                    // Expected CSV format based on the provided file (11 columns total):
-                    // 0: ID, 1: Nombre, 2: Duplicado, 3: Categoría, 4: Subsidiaria principal, 
-                    // 5: Contacto principal, 6: Teléfono, 7: Correo electrónico, 8: Acceso de inicio de sesión, 
-                    // 9: Número Proveedor, 10: Cuentas de gastos
-                    
-                    if (record.length < 11) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected 11, got " + record.length + ")");
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    Proveedor proveedor = new Proveedor();
-                    
-                    // Map fields from CSV columns with safe value extraction
-                    proveedor.setId(getColumnValue(record, 0)); // ID
-                    proveedor.setNombre(getColumnValue(record, 1)); // Nombre
-                    proveedor.setDuplicado(getColumnValue(record, 2)); // Duplicado
-                    proveedor.setCategoria(getColumnValue(record, 3)); // Categoría
-                    proveedor.setSubsidiariaPrincipal(getColumnValue(record, 4)); // Subsidiaria principal
-                    proveedor.setContactoPrincipal(getColumnValue(record, 5)); // Contacto principal
-                    proveedor.setTelefono(getColumnValue(record, 6)); // Teléfono
-                    proveedor.setCorreoElectronico(getColumnValue(record, 7)); // Correo electrónico
-                    proveedor.setAccesoInicioSesion(getColumnValue(record, 8)); // Acceso de inicio de sesión
-                    proveedor.setNumeroProveedor(getColumnValue(record, 9)); // Número Proveedor
-                    proveedor.setCuentasGastos(getColumnValue(record, 10)); // Cuentas de gastos
-                    
-                    // Validate required fields
-                    if (proveedor.getId().isEmpty()) {
-                        errors.add("Row " + rowNumber + ": ID is required (found empty) - SKIPPED");
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    if (proveedor.getNombre().isEmpty()) {
-                        errors.add("Row " + rowNumber + ": Nombre is required (found empty) - ID: '" + proveedor.getId() + "' - SKIPPED");
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    // Skip rows that appear to be system/reference data (common patterns)
-                    String idLower = proveedor.getId().toLowerCase();
-                    if (idLower.contains("contador") || idLower.contains("tax agency") || 
-                        idLower.equals("1") || idLower.equals("default")) {
-                        errors.add("Row " + rowNumber + ": Appears to be system/reference data - ID: '" + proveedor.getId() + "' - SKIPPED");
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    logger.debug("Row {}: Created proveedor with ID={}, Nombre='{}'", 
-                               rowNumber, proveedor.getId(), proveedor.getNombre());
-                    
-                    proveedores.add(proveedor);
-                    successCount++;
-                    
-                } catch (Exception e) {
-                    errors.add("Row " + rowNumber + ": Error processing record - " + e.getMessage());
+            String[] record;
+            int rowNumber = 2;
+            while ((record = csvReader.readNext()) != null) {
+                if (record.length < 11) {
+                    errors.add("Row " + rowNumber + ": Insufficient columns (expected 11, got " + record.length + ")");
                     errorCount++;
-                    logger.error("Error processing CSV row {}: {}", rowNumber, e.getMessage());
+                    rowNumber++;
+                    continue;
                 }
+                Proveedor proveedor = new Proveedor();
+                proveedor.setId(getColumnValue(record, 0));
+                proveedor.setNombre(getColumnValue(record, 1));
+                proveedor.setDuplicado(getColumnValue(record, 2));
+                proveedor.setCategoria(getColumnValue(record, 3));
+                proveedor.setSubsidiariaPrincipal(getColumnValue(record, 4));
+                proveedor.setContactoPrincipal(getColumnValue(record, 5));
+                proveedor.setTelefono(getColumnValue(record, 6));
+                proveedor.setCorreoElectronico(getColumnValue(record, 7));
+                proveedor.setAccesoInicioSesion(getColumnValue(record, 8));
+                proveedor.setNumeroProveedor(getColumnValue(record, 9));
+                proveedor.setCuentasGastos(getColumnValue(record, 10));
+
+                if (proveedor.getId().isEmpty()) {
+                    errors.add("Línea " + rowNumber + ": El campo 'ID' es requerido (vacío) - OMITIDO");
+                    errorCount++;
+                    rowNumber++;
+                    continue;
+                }
+                if (proveedor.getNombre().isEmpty()) {
+                    errors.add("Línea " + rowNumber + ": El campo 'Nombre' es requerido (vacío) - ID: '" + proveedor.getId() + "' - OMITIDO");
+                    errorCount++;
+                    rowNumber++;
+                    continue;
+                }
+                String idLower = proveedor.getId().toLowerCase();
+                if (idLower.contains("contador") || idLower.contains("tax agency") || idLower.equals("1") || idLower.equals("default")) {
+                    errors.add("Línea " + rowNumber + ": Parece ser dato de sistema/referencia - ID: '" + proveedor.getId() + "' - OMITIDO");
+                    errorCount++;
+                    rowNumber++;
+                    continue;
+                }
+                successCount++;
+                proveedores.add(proveedor);
+                rowNumber++;
             }
-            
-            // If replace all is true, delete all existing proveedores first
+
             if (replaceAll && !proveedores.isEmpty()) {
                 logger.info("Deleting all existing proveedores before import");
                 proveedorRepository.deleteAll();
             }
-            
-            // Save all valid proveedores
-            if (!proveedores.isEmpty()) {
-                logger.info("Saving {} proveedores to database", proveedores.size());
-                proveedorRepository.saveAll(proveedores);
-            }
-            
+
         } catch (IOException e) {
             logger.error("Error reading CSV file: {}", e.getMessage());
             throw new IOException("Error reading CSV file: " + e.getMessage(), e);
@@ -141,26 +153,30 @@ public class ProveedorService {
             logger.error("Error parsing CSV file: {}", e.getMessage());
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
-        
-        // Prepare response
+
         Map<String, Object> result = new HashMap<>();
         result.put("success", errorCount == 0);
         result.put("totalRecords", successCount + errorCount);
         result.put("successCount", successCount);
         result.put("errorCount", errorCount);
         result.put("errors", errors);
-        
+
         if (errorCount > 0) {
-            result.put("message", String.format("Import completed with issues: %d successful, %d errors/skipped. Check errors for details.", successCount, errorCount));
+            result.put("message", String.format("Importación completada con advertencias: %d exitosos, %d errores/omitidos. Consulta el detalle de errores.", successCount, errorCount));
         } else {
-            result.put("message", String.format("Import completed successfully: %d records imported", successCount));
+            result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
         }
-        
-        logger.info("CSV import completed. Success: {}, Errors/Skipped: {}", successCount, errorCount);
-        
+
+        logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
+
+        // Bulk insert only if no errors
+        if (errorCount == 0 && !proveedores.isEmpty()) {
+            batchInsertProveedores(proveedores);
+        }
+
         return result;
     }
-    
+
     /**
      * Safe method to get column value with bounds checking
      */

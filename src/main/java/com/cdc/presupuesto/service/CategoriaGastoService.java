@@ -27,6 +27,19 @@ public class CategoriaGastoService {
     @Autowired
     private CategoriaGastoRepository categoriaGastoRepository;
 
+    // Bulk insert categorias using DynamoDB batchWrite
+    @Autowired(required = false)
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient dynamoDbEnhancedClient;
+
+    private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<CategoriaGasto> categoriaGastoTable;
+
+    @Autowired(required = false)
+    public void setCategoriaGastoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.categoriaGasto:categorias_gasto}") String categoriaGastoTableName) {
+        if (dynamoDbEnhancedClient != null) {
+            this.categoriaGastoTable = dynamoDbEnhancedClient.table(categoriaGastoTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(CategoriaGasto.class));
+        }
+    }
+
     public List<CategoriaGasto> getAllCategorias() {
         return categoriaGastoRepository.findAll();
     }
@@ -43,6 +56,31 @@ public class CategoriaGastoService {
         categoriaGastoRepository.deleteById(id);
     }
 
+    /**
+     * Inserción masiva de categorías usando DynamoDB batchWrite.
+     * Si DynamoDB Enhanced Client no está configurado, usa saveAll.
+     */
+    private void batchInsertCategorias(List<CategoriaGasto> categorias) {
+        if (dynamoDbEnhancedClient == null || categoriaGastoTable == null) {
+            categoriaGastoRepository.saveAll(categorias);
+            return;
+        }
+        int batchSize = 25;
+        for (int i = 0; i < categorias.size(); i += batchSize) {
+            List<CategoriaGasto> batch = categorias.subList(i, Math.min(i + batchSize, categorias.size()));
+            software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.Builder<CategoriaGasto> writeBatchBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch.builder(CategoriaGasto.class)
+                    .mappedTableResource(categoriaGastoTable);
+            for (CategoriaGasto categoria : batch) {
+                writeBatchBuilder.addPutItem(categoria);
+            }
+            software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
+                software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
+            batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
+            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+        }
+    }
+
     public Map<String, Object> importCategoriasFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
         List<CategoriaGasto> categorias = new ArrayList<>();
         int successCount = 0;
@@ -57,11 +95,11 @@ public class CategoriaGastoService {
             
             for (int i = 0; i < records.size(); i++) {
                 String[] record = records.get(i);
-                int rowNumber = i + 2; // +2 because we skip header and arrays are 0-indexed
+                int rowNumber = i + 2; // +2 porque se omite el encabezado y arrays son 0-indexados
                 
                 try {
                     if (record.length < 5) {
-                        errors.add("Row " + rowNumber + ": Insufficient columns (expected at least 5, got " + record.length + ")");
+                        errors.add("Línea " + rowNumber + ": Columnas insuficientes (se esperaban al menos 5, se obtuvieron " + record.length + ")");
                         errorCount++;
                         continue;
                     }
@@ -69,7 +107,7 @@ public class CategoriaGastoService {
                     // Validar que el nombre no esté vacío primero
                     String nombre = record[0].trim();
                     if (nombre.isEmpty()) {
-                        errors.add("Row " + rowNumber + ": Nombre is required");
+                        errors.add("Línea " + rowNumber + ": El campo 'Nombre' es requerido");
                         errorCount++;
                         continue;
                     }
@@ -97,39 +135,33 @@ public class CategoriaGastoService {
                         Double saldoValue = parseSaldoValue(saldoStr);
                         categoria.setSaldo(saldoValue);
                     } catch (Exception e) {
-                        logger.warn("Row {}: Could not parse saldo '{}', setting to 0.0", rowNumber, record[4]);
+                        logger.warn("Línea {}: No se pudo convertir el saldo '{}', se asigna 0.0", rowNumber, record[4]);
                         categoria.setSaldo(0.0);
                     }
                     
                     // Validate required fields
                     if (categoria.getNombre().isEmpty()) {
-                        errors.add("Row " + rowNumber + ": Nombre is required");
+                        errors.add("Línea " + rowNumber + ": El campo 'Nombre' es requerido");
                         errorCount++;
                         continue;
                     }
                     
-                    logger.debug("Created categoria: ID={}, Nombre={}, Saldo={}", 
+                    logger.debug("Categoría creada: ID={}, Nombre={}, Saldo={}", 
                             categoria.getId(), categoria.getNombre(), categoria.getSaldo());
                     
                     categorias.add(categoria);
                     successCount++;
                     
                 } catch (Exception e) {
-                    errors.add("Row " + rowNumber + ": Error processing record - " + e.getMessage());
+                    errors.add("Línea " + rowNumber + ": Error procesando el registro - " + e.getMessage());
                     errorCount++;
-                    logger.error("Error processing CSV row {}: {}", rowNumber, e.getMessage());
+                    logger.error("Error procesando la línea CSV {}: {}", rowNumber, e.getMessage());
                 }
             }
             
             // If replace all is true, delete all existing categorias first
             if (replaceAll && !categorias.isEmpty()) {
                 categoriaGastoRepository.deleteAll();
-            }
-            
-            // Save all valid categorias
-            if (!categorias.isEmpty()) {
-                logger.info("Saving {} categorias gasto to database", categorias.size());
-                categoriaGastoRepository.saveAll(categorias);
             }
             
         } catch (IOException e) {
@@ -139,6 +171,11 @@ public class CategoriaGastoService {
             logger.error("Error parsing CSV file: {}", e.getMessage());
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
+
+        // Inserta en lote solo si no hay errores
+        if (errorCount == 0 && !categorias.isEmpty()) {
+            batchInsertCategorias(categorias);
+        }
         
         // Prepare response
         Map<String, Object> result = new HashMap<>();
@@ -147,9 +184,13 @@ public class CategoriaGastoService {
         result.put("successCount", successCount);
         result.put("errorCount", errorCount);
         result.put("errors", errors);
-        result.put("message", String.format("Import completed: %d successful, %d errors", successCount, errorCount));
+        if (errorCount > 0) {
+            result.put("message", String.format("Importación completada con advertencias: %d exitosos, %d errores/omitidos. Consulta el detalle de errores.", successCount, errorCount));
+        } else {
+            result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
+        }
         
-        logger.info("CSV import completed. Success: {}, Errors: {}", successCount, errorCount);
+        logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
         
         return result;
     }
