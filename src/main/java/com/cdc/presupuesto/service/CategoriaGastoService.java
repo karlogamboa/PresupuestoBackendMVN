@@ -34,7 +34,7 @@ public class CategoriaGastoService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<CategoriaGasto> categoriaGastoTable;
 
     @Autowired(required = false)
-    public void setCategoriaGastoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.categoriaGasto:categorias-gasto}") String categoriaGastoTableName) {
+    public void setCategoriaGastoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.categoriaGasto:fin-dynamodb-${ENVIRONMENT:qa}-presupuesto-categorias-gasto}") String categoriaGastoTableName) {
         if (dynamoDbEnhancedClient != null) {
             this.categoriaGastoTable = dynamoDbEnhancedClient.table(categoriaGastoTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(CategoriaGasto.class));
         }

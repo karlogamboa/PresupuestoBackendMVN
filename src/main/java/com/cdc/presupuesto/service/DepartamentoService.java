@@ -34,7 +34,7 @@ public class DepartamentoService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Departamento> departamentoTable;
 
     @Autowired(required = false)
-    public void setDepartamentoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.departamento:departamentos}") String departamentoTableName) {
+    public void setDepartamentoTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.departamentos:fin-dynamodb-${ENVIRONMENT:qa}-presupuesto-departamentos}") String departamentoTableName) {
         if (dynamoDbEnhancedClient != null) {
             this.departamentoTable = dynamoDbEnhancedClient.table(departamentoTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Departamento.class));
         }

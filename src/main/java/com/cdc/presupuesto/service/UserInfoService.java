@@ -32,29 +32,25 @@ public class UserInfoService {
             String userId = UserAuthUtils.getCurrentUserId();
             String userName = UserAuthUtils.getCurrentUserName();
             
-            if (userEmail == null || userEmail.trim().isEmpty()) {
-                logger.warn("No se encontró email en el contexto de autenticación para usuario: {}", userId);
-                return createEmptyUserInfo(userId, userName);
-            }
-
-            // Crear respuesta con información del API Gateway
+            
             Map<String, Object> userInfo = new HashMap<>();
             userInfo.put("id", userId != null ? userId : "unknown");
             userInfo.put("nombre", userName != null ? userName : "");
             userInfo.put("email", userEmail);
-            userInfo.put("isAdmin", isCurrentUserAdmin());
+            logger.debug("Obteniendo información del usuario: {}", userEmail);
+            // Buscar solicitante por correo electrónico y setear numeroEmpleado si existe
+            Solicitante solicitante = solicitanteService.getSolicitanteByCorreoElectronico(userEmail);
+            if (solicitante != null) {
+                userInfo.put("numeroEmpleado", solicitante.getNumEmpleado());
+                userInfo.put("isAdmin",solicitante.isAprobadorGastos());
+
+            }
             
             // Obtener roles del contexto de autenticación
             if (UserAuthUtils.hasRole("ADMIN") || UserAuthUtils.hasRole("ADMINISTRATOR")) {
                 userInfo.put("roles", "ADMIN");
             } else {
                 userInfo.put("roles", "USER");
-            }
-            
-            // Buscar solicitante por correo electrónico y setear numeroEmpleado si existe
-            Solicitante solicitante = solicitanteService.getSolicitanteByCorreoElectronico(userEmail);
-            if (solicitante != null) {
-                userInfo.put("numeroEmpleado", solicitante.getNumEmpleado());
             }
 
             logger.debug("Usuario info obtenido del API Gateway para: {}", userEmail);

@@ -27,7 +27,7 @@ public class ProveedorService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Proveedor> proveedorTable;
 
     @Autowired(required = false)
-    public void setProveedorTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.proveedor:proveedores}") String proveedorTableName) {
+    public void setProveedorTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.proveedores:fin-dynamodb-${ENVIRONMENT:qa}-presupuesto-proveedores}") String proveedorTableName) {
         if (dynamoDbEnhancedClient != null) {
             this.proveedorTable = dynamoDbEnhancedClient.table(proveedorTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Proveedor.class));
         }
