@@ -91,7 +91,7 @@ public class ProveedorService {
         List<String> errors = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;
-        List<Proveedor> proveedores = new ArrayList<>();
+        List<Proveedor> proveedoresExitosos = new ArrayList<>();
 
         try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))
                 .withSkipLines(1)
@@ -138,11 +138,11 @@ public class ProveedorService {
                     continue;
                 }
                 successCount++;
-                proveedores.add(proveedor);
+                proveedoresExitosos.add(proveedor);
                 rowNumber++;
             }
 
-            if (replaceAll && !proveedores.isEmpty()) {
+            if (replaceAll && !proveedoresExitosos.isEmpty()) {
                 logger.info("Deleting all existing proveedores before import");
                 proveedorRepository.deleteAll();
             }
@@ -153,6 +153,11 @@ public class ProveedorService {
         } catch (CsvException e) {
             logger.error("Error parsing CSV file: {}", e.getMessage());
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
+        }
+
+        // Guarda solo los exitosos
+        if (!proveedoresExitosos.isEmpty()) {
+            batchInsertProveedores(proveedoresExitosos);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -169,11 +174,6 @@ public class ProveedorService {
         }
 
         logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
-
-        // Bulk insert only if no errors
-        if (errorCount == 0 && !proveedores.isEmpty()) {
-            batchInsertProveedores(proveedores);
-        }
 
         return result;
     }

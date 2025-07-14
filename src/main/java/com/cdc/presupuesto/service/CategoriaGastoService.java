@@ -18,7 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoriaGastoService {
@@ -92,6 +95,9 @@ public class CategoriaGastoService {
         int successCount = 0;
         int errorCount = 0;
         List<String> errors = new ArrayList<>();
+        Set<String> idsVistos = new HashSet<>();
+        Set<String> idsDuplicados = new HashSet<>();
+        List<CategoriaGasto> categoriasSinDuplicados = new ArrayList<>();
 
         try (CSVReader csvReader = new CSVReaderBuilder(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))
                 .withSkipLines(1) // Skip header
@@ -122,6 +128,12 @@ public class CategoriaGastoService {
                     
                     // Generar ID automáticamente a partir del nombre
                     String id = generateCategoriaId(nombre);
+                    if (!idsVistos.add(id)) {
+                        idsDuplicados.add(id);
+                        errorCount++;
+                        errors.add("Línea " + rowNumber + ": ID duplicado '" + id + "' - OMITIDO");
+                        continue;
+                    }
                     categoria.setId(id);
                     
                     // Mapear correctamente las columnas del CSV:
@@ -155,7 +167,7 @@ public class CategoriaGastoService {
                     logger.debug("Categoría creada: ID={}, Nombre={}, Saldo={}", 
                             categoria.getId(), categoria.getNombre(), categoria.getSaldo());
                     
-                    categorias.add(categoria);
+                    categoriasSinDuplicados.add(categoria);
                     successCount++;
                     
                 } catch (Exception e) {
@@ -166,7 +178,7 @@ public class CategoriaGastoService {
             }
             
             // If replace all is true, delete all existing categorias first
-            if (replaceAll && !categorias.isEmpty()) {
+            if (replaceAll && !categoriasSinDuplicados.isEmpty()) {
                 categoriaGastoRepository.deleteAll();
             }
             
@@ -178,11 +190,14 @@ public class CategoriaGastoService {
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
 
-        // Inserta en lote solo si no hay errores
-        if (errorCount == 0 && !categorias.isEmpty()) {
-            batchInsertCategorias(categorias);
+        // Inserta en lote solo si hay al menos un registro válido
+        if (!categoriasSinDuplicados.isEmpty()) {
+            batchInsertCategorias(categoriasSinDuplicados);
         }
-        
+        if (!idsDuplicados.isEmpty()) {
+            errors.add("Advertencia: Se omitieron " + idsDuplicados.size() + " categorías duplicadas por ID. IDs duplicados: " + String.join(", ", idsDuplicados));
+        }
+
         // Prepare response
         Map<String, Object> result = new HashMap<>();
         result.put("success", errorCount == 0);
