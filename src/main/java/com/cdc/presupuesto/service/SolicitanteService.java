@@ -33,7 +33,7 @@ public class SolicitanteService {
     private software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable<Solicitante> solicitanteTable;
 
     @Autowired(required = false)
-    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitante}") String solicitanteTableName) {
+    public void setSolicitanteTable(@org.springframework.beans.factory.annotation.Value("${aws.dynamodb.table.solicitantes:fin-dynamodb-${ENVIRONMENT:qa}-presupuesto-solicitantes}") String solicitanteTableName) {
         if (dynamoDbEnhancedClient != null) {
             // El nombre debe ser exactamente el de la tabla DynamoDB
             this.solicitanteTable = dynamoDbEnhancedClient.table(solicitanteTableName, software.amazon.awssdk.enhanced.dynamodb.TableSchema.fromBean(Solicitante.class));
@@ -145,7 +145,10 @@ public class SolicitanteService {
                     
                     // Map fields from CSV columns
                     solicitante.setNombre(getColumnValue(record, 0)); // Nombre
-                    
+
+                    // Set correoElectronico from column 2
+                    solicitante.setCorreoElectronico(getColumnValue(record, 2)); // Correo electrónico
+
                     // Extract subsidiaria from column 6 (format: "Empresa principal : Circulo de Crédito SA de CV")
                     String subsidiaria = extractFromColumn(getColumnValue(record, 6), false);
                     solicitante.setSubsidiaria(subsidiaria);
