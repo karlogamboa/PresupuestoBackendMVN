@@ -25,13 +25,13 @@ import java.util.stream.Collectors;
 @Component
 public class ApiGatewayAuthenticationFilter extends OncePerRequestFilter {
 
-    @Value("${api.gateway.email.header.name:x-user-email}")
+    @Value("${api.gateway.email.header.name:X-User-Email}")
     private String userEmailHeader;
-    @Value("${api.gateway.roles.header.name:x-user-roles}")
+    @Value("${api.gateway.roles.header.name:X-User-Roles}")
     private String userRolesHeader;
-    @Value("${api.gateway.user.header.name:x-user-id}")
+    @Value("${api.gateway.user.header.name:X-User-Id}")
     private String userIdHeader;
-    @Value("${api.gateway.name.header.name:x-user-name}")
+    @Value("${api.gateway.name.header.name:X-User-Name}")
     private String userNameHeader;
 
     @Override
