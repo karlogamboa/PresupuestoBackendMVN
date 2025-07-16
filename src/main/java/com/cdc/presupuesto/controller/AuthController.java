@@ -23,7 +23,7 @@ public class AuthController {
     
 
     /**
-     * Obtiene información del usuario autenticado via API Gateway
+     * Obtiene información del usuario autenticado via SAML2
      */
     @PostMapping("/api/userInfo")
     public ResponseEntity<Map<String, Object>> getUserInfo() {
@@ -42,14 +42,14 @@ public class AuthController {
     }
 
     /**
-     * Endpoint de debug para ver información de autenticación de API Gateway
+     * Endpoint de debug para ver información de autenticación SAML2
      */
     @PostMapping("/api/debug/auth-info")
     public ResponseEntity<Map<String, Object>> getAuthInfo() {
         try {
             Map<String, Object> debugInfo = userInfoService.getDebugInfo();
             
-            // Obtener información adicional del contexto de Spring Security
+            // Obtener información adicional del contexto de Spring Security SAML2
             org.springframework.security.core.Authentication auth = 
                 org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             
@@ -84,24 +84,21 @@ public class AuthController {
     }
 
     /**
-     * Endpoint para logout - solo retorna mensaje de éxito
-     * (El logout real se maneja en el API Gateway/Authorizer)
+     * Endpoint para logout SAML2 real: redirige al endpoint de Spring Security SAML2 logout
      */
-    @PostMapping("/api/logout")
-    public ResponseEntity<Map<String, String>> logout() {
-        return ResponseEntity.ok(Map.of(
-            "status", "success",
-            "message", "Logged out successfully"
-        ));
+    @GetMapping("/logout")
+    public void saml2Logout(jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+        response.sendRedirect("/saml2/logout");
     }
 
+
     /**
-     * Endpoint de configuración simplificado para API Gateway
+     * Endpoint de configuración simplificado para SAML2
      */
     @GetMapping("/api/auth-config")
     public ResponseEntity<Map<String, String>> getAuthConfig() {
         Map<String, String> config = Map.of(
-            "authMethod", "API_GATEWAY",
+            "authMethod", "SAML2",
             "version", "1.0"
         );
 

@@ -12,7 +12,7 @@ import com.cdc.presupuesto.model.Solicitante;
 
 /**
  * Servicio para manejo de información de usuarios
- * Simplificado para usar solo información del API Gateway Authorizer
+ * AWS Lambda + API Gateway + SAML2 (sin API Gateway Authorizer)
  */
 @Service
 public class UserInfoService {
@@ -23,7 +23,7 @@ public class UserInfoService {
     private SolicitanteService solicitanteService;
 
     /**
-     * Obtiene la información del usuario desde el contexto de API Gateway
+     * Obtiene la información del usuario desde el contexto de autenticación SAML2
      * @return Información del usuario del contexto de autenticación
      */
     public Map<String, Object> getCurrentUserInfo() {
@@ -46,14 +46,14 @@ public class UserInfoService {
 
             }
             
-            // Obtener roles del contexto de autenticación
+            // Obtener roles del contexto de autenticación SAML2
             if (UserAuthUtils.hasRole("ADMIN") || UserAuthUtils.hasRole("ADMINISTRATOR")) {
                 userInfo.put("roles", "ADMIN");
             } else {
                 userInfo.put("roles", "USER");
             }
 
-            logger.debug("Usuario info obtenido del API Gateway para: {}", userEmail);
+            logger.debug("Usuario info obtenido del contexto SAML2 para: {}", userEmail);
             return userInfo;
             
         } catch (Exception e) {
@@ -108,7 +108,7 @@ public class UserInfoService {
     }
 
     /**
-     * Obtiene información de debug del contexto de autenticación
+     * Obtiene información de debug del contexto de autenticación SAML2
      * @return Información de debug
      */
     public Map<String, Object> getDebugInfo() {
@@ -119,7 +119,7 @@ public class UserInfoService {
             debugInfo.put("userEmail", UserAuthUtils.getCurrentUserEmail());
             debugInfo.put("userName", UserAuthUtils.getCurrentUserName());
             debugInfo.put("isAdmin", isCurrentUserAdmin());
-            debugInfo.put("authenticationSource", "API Gateway");
+            debugInfo.put("authenticationSource", "SAML2");
             
             return debugInfo;
         } catch (Exception e) {

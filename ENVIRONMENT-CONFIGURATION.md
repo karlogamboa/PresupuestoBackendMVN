@@ -161,8 +161,8 @@ El sistema soporta los siguientes endpoints relacionados con autenticación y se
 - `POST /api/logout` - Invalida la sesión del usuario.
 
 > **Nota:**
-> - En la arquitectura actual, `/api/userInfo` y `/api/logout` están implementados y gestionan la sesión del usuario autenticado a través del API Gateway Authorizer.
-> - Los endpoints `/auth/login` y `/auth/callback` ya no existen en el backend (el login es responsabilidad del API Gateway Authorizer).
+> - En la arquitectura actual, `/api/userInfo` y `/api/logout` están implementados y gestionan la sesión del usuario autenticado a través de SAML2 (Spring Security).
+> - Los endpoints `/auth/login` y `/auth/callback` ya no existen en el backend (el login es responsabilidad del flujo SAML2).
 
 
 ---
@@ -191,7 +191,7 @@ El sistema soporta los siguientes endpoints relacionados con autenticación y se
 - **Routing**: Manejo de todas las rutas HTTP
 - **CORS**: Configurado a nivel de API Gateway
 - **SSL/TLS**: Terminación SSL en API Gateway
-- **Authentication**: API Gateway Authorizer (no JWT local)
+- **Authentication**: SAML2 (no API Gateway Authorizer, no JWT local)
 - **Rate Limiting**: Controlado por API Gateway
 
 ### 📦 Despliegue

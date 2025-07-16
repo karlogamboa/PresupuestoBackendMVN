@@ -74,13 +74,6 @@
             <version>3.0.3</version>
         </dependency>
 
-        <!-- SpringDoc OpenAPI 3 (Swagger) -->
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.2.0</version>
-        </dependency>
-
         <!-- CSV Processing -->
         <dependency>
             <groupId>com.opencsv</groupId>
@@ -113,6 +106,20 @@
             <version>3.11.4</version>
         </dependency>
 
+        <!-- SAML 2.0 Spring Security -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-saml2-service-provider</artifactId>
+        </dependency>
+        <!-- SCIM (ejemplo con scim-sdk) -->
+        <!--
+        <dependency>
+            <groupId>com.independentid</groupId>
+            <artifactId>scim-sdk-server</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+        -->
+
         <!-- Test Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -124,6 +131,29 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        
+        <!-- SAML/OpenSAML dependencies -->
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-core</artifactId>
+            <version>3.4.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-saml-api</artifactId>
+            <version>3.4.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-saml-impl</artifactId>
+            <version>3.4.6</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -263,4 +293,9 @@
             </build>
         </profile>
     </profiles>
+
+    <repositories>
+        <!-- Remove OSSRH repositories, Maven Central is enough for 3.x -->
+    </repositories>
+
 </project>

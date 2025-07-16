@@ -10,6 +10,9 @@ import com.cdc.presupuesto.PresupuestoBackendApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Lambda handler para AWS Lambda + API Gateway + SAML2
+ */
 public class LambdaHandler implements RequestHandler<AwsProxyRequest, AwsProxyResponse> {
 
     private static final Logger logger = LoggerFactory.getLogger(LambdaHandler.class);

@@ -21,7 +21,7 @@ public class LambdaInfoController {
     public ResponseEntity<Map<String, Object>> getLambdaInfo() {
         Map<String, Object> info = new HashMap<>();
         info.put("status", "running");
-        info.put("environment", "lambda");
+        info.put("environment", "lambda + SAML2");
         info.put("functionUrl", lambdaFunctionUrl.isEmpty() ? "Not configured" : lambdaFunctionUrl);
         
         // Available endpoints
@@ -35,6 +35,7 @@ public class LambdaInfoController {
         
         // Handler/runtime info
         info.put("handler", "com.amazonaws.serverless.proxy.spring.SpringBootProxyHandler::handleRequest");
+        info.put("authMethod", "SAML2");
         info.put("runtime", "java21");
         Map<String, Object> runtime = new HashMap<>();
         runtime.put("javaVersion", System.getProperty("java.version"));
