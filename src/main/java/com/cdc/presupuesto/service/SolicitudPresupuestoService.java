@@ -2,6 +2,7 @@ package com.cdc.presupuesto.service;
 
 import com.cdc.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.presupuesto.repository.SolicitudPresupuestoRepository;
+import com.cdc.presupuesto.util.UserAuthUtils;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,13 @@ public class SolicitudPresupuestoService {
         return repository.findByNumEmpleado(numEmpleado);
     }
 
-    public SolicitudPresupuesto create(SolicitudPresupuesto solicitud, String userEmail, String userName) {
+    public SolicitudPresupuesto create(SolicitudPresupuesto solicitud) {
+        // Obtener datos del usuario autenticado vía SAML/OKTA
+        String userEmail = UserAuthUtils.getCurrentUserEmail();
+        String userName = UserAuthUtils.getCurrentUserName();
+        // String numeroEmpleado = UserAuthUtils.getCurrentUserEmployeeNumber(); // Implementar si es necesario
+        // String departamento = UserAuthUtils.getCurrentUserDepartment(); // Implementar si es necesario
+
         String id = UUID.randomUUID().toString();
         String solicitudId = "REQ-" + System.currentTimeMillis();
         
@@ -77,73 +84,16 @@ public class SolicitudPresupuestoService {
         return savedSolicitud;
     }
 
-    public SolicitudPresupuesto update(String id, String solicitudId, SolicitudPresupuesto solicitud, 
-                                      String userEmail, String userName) {
-        Optional<SolicitudPresupuesto> existingSolicitud = repository.findById(id, solicitudId);
-        
-        if (existingSolicitud.isPresent()) {
-            SolicitudPresupuesto existing = existingSolicitud.get();
-            String oldStatus = existing.getEstatusConfirmacion();
-            
-            // Update fields
-            existing.setSolicitante(solicitud.getSolicitante());
-            existing.setNumeroEmpleado(solicitud.getNumeroEmpleado());
-            existing.setCorreo(solicitud.getCorreo());
-            existing.setCecos(solicitud.getCecos());
-            existing.setDepartamento(solicitud.getDepartamento());
-            existing.setSubDepartamento(solicitud.getSubDepartamento());
-            existing.setCentroCostos(solicitud.getCentroCostos());
-            existing.setCategoriaGasto(solicitud.getCategoriaGasto());
-            existing.setCuentaGastos(solicitud.getCuentaGastos());
-            existing.setNombre(solicitud.getNombre());
-            existing.setPresupuestoDepartamento(solicitud.getPresupuestoDepartamento());
-            existing.setPresupuestoArea(solicitud.getPresupuestoArea());
-            existing.setMontoSubtotal(solicitud.getMontoSubtotal());
-            existing.setFecha(solicitud.getFecha());
-            existing.setPeriodoPresupuesto(solicitud.getPeriodoPresupuesto());
-            existing.setEmpresa(solicitud.getEmpresa());
-            existing.setProveedor(solicitud.getProveedor());
-            existing.setComentarios(solicitud.getComentarios());
-            existing.setFechaActualizacion(Instant.now());
-            existing.setActualizadoPor(userEmail);
-            
-            // Update status if provided
-            if (solicitud.getEstatusConfirmacion() != null) {
-                existing.setEstatusConfirmacion(solicitud.getEstatusConfirmacion());
-            }
-            
-            SolicitudPresupuesto updatedSolicitud = repository.save(existing);
-            
-            // Enviar notificación si el estado cambió
-            if (solicitud.getEstatusConfirmacion() != null && !solicitud.getEstatusConfirmacion().equals(oldStatus)) {
-                try {
-                    // Enviar notificación al solicitante original
-                    String requesterEmail = existing.getCreadoPor();
-                    emailService.sendBudgetStatusNotification(
-                        userEmail,
-                        requesterEmail,
-                        solicitudId,
-                        solicitud.getEstatusConfirmacion(),
-                        solicitud.getComentarios()
-                    );
-                } catch (Exception e) {
-                    // Log el error pero no fallar la actualización
-                    logger.error("Error sending status notification: {}", e.getMessage(), e);
-                }
-            }
-            
-            return updatedSolicitud;
-        } else {
-            throw new SolicitudNotFoundException("Solicitud not found");
-        }
-    }
-
     public void deleteById(String id, String solicitudId) {
         repository.deleteById(id, solicitudId);
     }
 
     public Optional<SolicitudPresupuesto> updateStatus(String id, String solicitudId, String nuevoEstatus, 
-                                                      String comentarios, String userEmail, String userName) {
+                                                      String comentarios) {
+        // Obtener datos del usuario autenticado vía SAML/OKTA
+        String userEmail = UserAuthUtils.getCurrentUserEmail();
+        String userName = UserAuthUtils.getCurrentUserName();
+
         Optional<SolicitudPresupuesto> existingSolicitud = repository.findById(id, solicitudId);
         
         if (existingSolicitud.isPresent()) {

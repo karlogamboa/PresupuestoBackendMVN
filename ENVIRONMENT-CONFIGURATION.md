@@ -100,15 +100,15 @@ export SPRING_PROFILES_ACTIVE=lambda,dev
 
 ### Desarrollo
 - Prefijo: `fin-dynamodb-dev-presupuesto-`
-- Tablas: `fin-dynamodb-dev-presupuesto-solicitudes`, etc.
+- Tablas: `fin-dynamodb-dev-presupuesto-solicitudes`, `fin-dynamodb-dev-presupuesto-solicitantes`, `fin-dynamodb-dev-presupuesto-proveedores`, `fin-dynamodb-dev-presupuesto-departamentos`, `fin-dynamodb-dev-presupuesto-categorias-gasto`, `fin-dynamodb-dev-presupuesto-scim-users`, `fin-dynamodb-dev-presupuesto-scim-groups`, etc.
 
 ### QA
 - Prefijo: `fin-dynamodb-qa-presupuesto-`
-- Tablas: `fin-dynamodb-qa-presupuesto-solicitudes`, etc.
+- Tablas: `fin-dynamodb-qa-presupuesto-solicitudes`, `fin-dynamodb-qa-presupuesto-solicitantes`, `fin-dynamodb-qa-presupuesto-proveedores`, `fin-dynamodb-qa-presupuesto-departamentos`, `fin-dynamodb-qa-presupuesto-categorias-gasto`, `fin-dynamodb-qa-presupuesto-scim-users`, `fin-dynamodb-qa-presupuesto-scim-groups`, etc.
 
 ### Producción
 - Prefijo: `fin-dynamodb-prod-presupuesto-`
-- Tablas: `fin-dynamodb-prod-presupuesto-solicitudes`, etc.
+- Tablas: `fin-dynamodb-prod-presupuesto-solicitudes`, `fin-dynamodb-prod-presupuesto-solicitantes`, `fin-dynamodb-prod-presupuesto-proveedores`, `fin-dynamodb-prod-presupuesto-departamentos`, `fin-dynamodb-prod-presupuesto-categorias-gasto`, `fin-dynamodb-prod-presupuesto-scim-users`, `fin-dynamodb-prod-presupuesto-scim-groups`, etc.
 
 ## Variables de Entorno para Lambda
 
@@ -199,3 +199,26 @@ El sistema soporta los siguientes endpoints relacionados con autenticación y se
 - **Layers**: Dependencias separadas para deployments rápidos
 - **Environment Variables**: Configuración por ambiente
 - **Parameter Store**: Configuración sensible centralizada
+
+## Endpoints SCIM para Aprovisionamiento (Okta)
+
+El backend expone endpoints compatibles con SCIM 2.0 para integración con Okta u otros IdPs:
+
+- `GET /scim/v2/Users` - Lista usuarios
+- `POST /scim/v2/Users` - Crea usuario
+- `GET /scim/v2/Users/{id}` - Obtiene usuario por ID
+- `PUT /scim/v2/Users/{id}` - Reemplaza usuario
+- `PATCH /scim/v2/Users/{id}` - Modifica usuario parcialmente
+- `DELETE /scim/v2/Users/{id}` - Elimina usuario
+
+- `GET /scim/v2/Groups` - Lista grupos
+- `POST /scim/v2/Groups` - Crea grupo
+- `GET /scim/v2/Groups/{id}` - Obtiene grupo por ID
+- `PUT /scim/v2/Groups/{id}` - Reemplaza grupo
+- `PATCH /scim/v2/Groups/{id}` - Modifica grupo parcialmente
+- `DELETE /scim/v2/Groups/{id}` - Elimina grupo
+
+> **Nota:** Los endpoints SCIM usan DynamoDB (`scim-users`, `scim-groups`) y están protegidos por autenticación (por ejemplo, Basic Auth para Okta provisioning).
+> **Importante:** El atributo `"id"` debe estar presente en todos los objetos usuario SCIM para que Okta pueda aprovisionar correctamente.
+
+- **Stage:** La propiedad `stage` se define en cada archivo de configuración por ambiente (`application.properties`, `application-qa.properties`, `application-prod.properties`) y se utiliza en el backend para rutas y redirecciones dinámicas.

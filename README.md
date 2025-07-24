@@ -1,239 +1,180 @@
-
-
 # Sistema de Gestión de Presupuestos - Backend
 
-Backend moderno para la gestión de presupuestos, desarrollado en **Spring Boot** y optimizado para **AWS Lambda**. Incluye integración con **DynamoDB**, autenticación y autorización vía **API Gateway Authorizer**, y notificaciones automáticas por **AWS SES**. El sistema está preparado para ambientes multi-entorno y sigue buenas prácticas de seguridad, configuración y despliegue serverless.
+Este es el repositorio del backend para el sistema de gestión de presupuestos. Provee las APIs necesarias para la creación, consulta y administración de solicitudes de presupuesto, así como la gestión de proveedores, departamentos y categorías de gasto.
 
-## Cambios recientes (julio 2025)
-- Eliminado todo rastro de Spring Mail y Swagger/OpenAPI.
-- CORS global y seguro, configurable por Parameter Store.
-- Perfiles Spring: `lambda`, `dev`, `qa`, `prod`, y `!lambda` (local).
-- Email solo por AWS SES (bean `SesClient`).
-- Seguridad y roles solo por API Gateway Authorizer.
-- Documentación y scripts legacy movidos a archivos separados.
+## Descripción General
 
-## Arquitectura y Componentes
-...existing code...
+El sistema está diseñado para integrarse con AWS, utilizando servicios como DynamoDB, S3 y SES. También se integra con Okta para la autenticación y autorización de usuarios.
 
-## Arquitectura y Componentes
+- **DynamoDB**: Base de datos NoSQL, con prefijos de tabla por ambiente (`dev`, `qa`, `prod`, `lambda`).  
+  **Tablas principales:**  
+  - `solicitudes`  
+  - `proveedores`  
+  - `departamentos`  
+  - `categorias-gasto`  
+  - `scim-users`  
+  - `scim-groups`
 
-- **Spring Boot**: Framework principal, desacoplado de Tomcat para ejecución serverless.
-- **AWS Lambda**: Ejecución serverless, cold start optimizado, sin estado.
-- **API Gateway**: Expone endpoints REST, maneja autenticación y roles vía headers personalizados (`x-user-id`, `x-user-email`, `x-user-roles`).
-- **DynamoDB**: Base de datos NoSQL, con prefijos de tabla por ambiente (`dev`, `qa`, `prod`, `lambda`).
-- **AWS Parameter Store**: Configuración dinámica de CORS y otros parámetros sensibles.
-- **AWS SES**: Envío de notificaciones por email, centralizado en `EmailService`.
+- **S3**: Almacenamiento de archivos adjuntos a las solicitudes de presupuesto.
 
-## Perfiles y Configuración
+- **SES (Simple Email Service)**: Envío de notificaciones por email.
 
-- **Perfiles Spring**: `lambda`, `dev`, `qa`, `prod`, y `!lambda` (local). Cada uno ajusta endpoints, CORS, y credenciales.
-- **CORS**: Filtro global (`GlobalCorsHeaderFilterConfig`) asegura headers correctos y personalizados en todas las respuestas, con valores obtenidos de Parameter Store.
-- **Seguridad**: Autenticación y autorización gestionadas por API Gateway. El backend valida y expone el contexto de usuario y roles.
-- **Logging**: Configuración robusta para ambientes Lambda y locales.
+- **Okta**: Autenticación y autorización de usuarios mediante SAML2 y SCIM.
 
 ## Funcionalidad Principal
 
-- **Gestión de Solicitantes**: CRUD, importación masiva por CSV, validaciones de unicidad y consistencia.
 - **Gestión de Presupuestos**: CRUD, jerarquía de áreas/departamentos, proveedores, categorías de gasto.
 - **Notificaciones**: Emails automáticos por eventos clave usando AWS SES.
 - **Salud y Debug**: Endpoints `/health`, `/api/userInfo`, `/api/debug/*` para monitoreo y pruebas.
-
-## Integraciones AWS
-
-- **DynamoDB**: Acceso desacoplado por repositorios, uso de prefijos de tabla por ambiente.
-- **SES**: Toda la lógica de email centralizada en `EmailService`, sin dependencias de Spring Mail.
-- **Parameter Store**: Uso recomendado para orígenes CORS, credenciales y parámetros sensibles.
-
-## Limpieza y Buenas Prácticas
-
-- **Swagger/OpenAPI**: Eliminado del proyecto para reducir superficie de ataque y dependencias innecesarias.
-- **Spring Mail**: Eliminado; toda la mensajería usa AWS SES.
-- **Filtros y Seguridad**: Filtros de CORS y autenticación implementados como `OncePerRequestFilter` y configurados globalmente.
-- **Validación y Refactorización**: Controladores revisados para evitar duplicación y mejorar validación con anotaciones.
-
-## Despliegue y Ejecución
-
-1. **Compilar**: `mvn clean package -DskipTests`
-2. **Desplegar**: Subir el JAR generado a AWS Lambda (handler: `com.cdc.presupuesto.lambda.LambdaHandler`)
-3. **Configurar**: Ajustar variables de entorno y Parameter Store para cada ambiente (`aws.region`, `aws.dynamodb.table.prefix`, CORS, etc.)
 
 ## Endpoints Principales
 
 - `/health`: Estado del servicio
 - `/api/userInfo`: Información del usuario autenticado
 - `/api/solicitudes-presupuesto`: CRUD de solicitudes
-- `/api/solicitantes`: CRUD de solicitantes
 - `/api/areas`, `/api/departamentos`, `/api/subdepartamentos`: Gestión organizacional
 - `/api/proveedores`, `/api/categorias-gasto`: Gestión de proveedores y categorías
+- `/scim/v2/Users`: Endpoints SCIM para usuarios (Okta provisioning)
+- `/scim/v2/Groups`: Endpoints SCIM para grupos (Okta provisioning)
 
-## Notas y Recomendaciones
+## Ejemplo de Flujo de Trabajo
 
-- **Swagger y Spring Mail**: Eliminados completamente. No agregar dependencias ni configuraciones relacionadas.
-- **CORS**: Configurado globalmente, personalizable por Parameter Store.
-- **Perfiles**: Usar el perfil adecuado para cada entorno (`lambda` para producción Lambda, `!lambda` para local).
-- **Documentación**: Mantener este README actualizado ante cambios de arquitectura o dependencias.
+1. **Creación de Solicitud de Presupuesto**:
+   - Un usuario crea una solicitud de presupuesto a través del endpoint `/api/solicitudes-presupuesto`.
+   - El sistema guarda la solicitud en DynamoDB y envía una notificación por email al aprobador.
 
----
+2. **Aprobación de Solicitud**:
+   - El aprobador recibe un email y accede al sistema.
+   - El aprobador revisa la solicitud y cambia el estatus a "Aprobado" o "Rechazado" mediante el endpoint correspondiente.
+   - El sistema envía una notificación al solicitante con el resultado.
 
-_Última actualización: julio 2025_
-- **Enhanced Client**: DynamoDB Enhanced Client para operaciones optimizadas
-- **Parameter Store**: Configuración centralizada y dinámica
+3. **Gestión de Proveedores y Categorías**:
+   - Los administradores pueden gestionar proveedores y categorías de gasto a través de los endpoints `/api/proveedores` y `/api/categorias-gasto`.
 
-## Estructura del Proyecto
+## Estructura de Datos
 
-```
-src/main/java/com/cdc/presupuesto/
-├── config/           # Configuración de Spring Boot y AWS
-├── controller/       # Controladores REST
-├── model/           # Entidades/Modelos de datos
-├── repository/      # Repositorios para acceso a datos
-├── service/         # Lógica de negocio
-└── PresupuestoBackendApplication.java
-```
-
-## Endpoints Principales
-
-### Autenticación y Configuración
-- `POST /api/userInfo` - Información del usuario autenticado via API Gateway
-- `POST /api/debug/auth-info` - Debug de información de autenticación
-- `GET /api/auth-config` - Configuración de autenticación
-- `POST /api/logout` - Logout (retorna confirmación)
-
-### Gestión de Solicitantes
-- `GET /api/solicitantes` - Listar todos los solicitantes
-- `POST /api/solicitantes` - Crear nuevo solicitante
-- `PUT /api/solicitantes/{id}` - Actualizar solicitante
-- `DELETE /api/solicitantes/{id}` - Eliminar solicitante
-- `POST /api/solicitantes/import-csv` - Importar solicitantes desde CSV
-
-### Gestión de Solicitudes de Presupuesto
-- `GET /api/solicitudes-presupuesto` - Listar solicitudes
-- `POST /api/solicitudes-presupuesto` - Crear nueva solicitud
-- `PUT /api/solicitudes-presupuesto/{id}` - Actualizar solicitud
-- `DELETE /api/solicitudes-presupuesto/{id}` - Eliminar solicitud
-
-### Gestión Organizacional
-- `GET /api/areas` - Listar áreas
-- `GET /api/departamentos` - Listar departamentos
-- `GET /api/subdepartamentos` - Listar subdepartamentos (filtrable por área)
-- `GET /api/proveedores` - Listar proveedores
-- `GET /api/categorias-gasto` - Listar categorías de gasto
-
-### Resultados y Administración
-- `GET /api/resultados` - Obtener resultados (filtrable por empleado)
-- `POST /api/resultados/editar-estatus` - Cambiar estatus (solo Admin)
-
-### Email Notifications
-- `POST /api/emails/send` - Enviar email genérico
-- `POST /api/emails/send-budget-notification` - Notificación de presupuesto
-- `POST /api/emails/send-status-notification` - Notificación de cambio de estatus
-
-### Utilidades
-- `GET /health` - Health check
-- `GET /v3/api-docs` - Documentación OpenAPI
-- `GET /swagger-ui.html` - Interfaz Swagger UI
-
-## Configuración de Ambientes
-
-### Variables de Entorno para Lambda
-```properties
-# Ambiente (dev/qa/prod)
-ENVIRONMENT=qa
-SPRING_PROFILES_ACTIVE=lambda,qa
-AWS_REGION=us-east-2
-
-# Configuración automática via Parameter Store
-# /fin/{ENVIRONMENT}/presupuesto/...
+### Usuario SCIM
+```json
+{
+  "id": "string", // Este campo es obligatorio y debe estar presente en todos los usuarios
+  "userName": "string",
+  "name": {
+    "given": "string",
+    "family": "string"
+  },
+  "emails": [
+    {
+      "value": "string",
+      "primary": true
+    }
+  ],
+  "active": true,
+  "roles": ["string"]
+}
 ```
 
-### Configuración por Parameter Store
-El sistema usa AWS Parameter Store para configuración dinámica:
+### Grupo SCIM
+```json
+{
+  "id": "string",
+  "displayName": "string",
+  "members": [
+    {
+      "value": "string",
+      "display": "string"
+    }
+  ]
+}
+```
 
+### Solicitud de Presupuesto
+```json
+{
+  "id": "string",
+  "solicitudId": "string",
+  "solicitante": "string",
+  "numeroEmpleado": "string",
+  "correo": "string",
+  "cecos": "string",
+  "departamento": "string",
+  "subDepartamento": "string",
+  "centroCostos": "string",
+  "categoriaGasto": "string",
+  "cuentaGastos": "string",
+  "nombre": "string",
+  "presupuestoDepartamento": "string",
+  "presupuestoArea": "string",
+  "montoSubtotal": 0,
+  "estatusConfirmacion": "string",
+  "fecha": "string",
+  "periodoPresupuesto": "string",
+  "empresa": "string",
+  "proveedor": "string",
+  "fechaCreacion": "2021-01-01T00:00:00Z",
+  "fechaActualizacion": "2021-01-01T00:00:00Z",
+  "creadoPor": "string",
+  "actualizadoPor": "string",
+  "archivosAdjuntos": ["string"],
+  "comentarios": "string"
+}
 ```
-/fin/qa/presupuesto/aws/region
-/fin/qa/presupuesto/aws/dynamodb/table/prefix
-/fin/qa/presupuesto/cors/allowed-origins
-/fin/qa/presupuesto/security/auth/enabled
-# ... más parámetros según ENVIRONMENT-CONFIGURATION.md
-```
+
+## Seguridad
+
+### Autenticación via API Gateway y SCIM
+- Headers de usuario válidos requeridos para todas las operaciones
+- Endpoints `/scim/v2/**` protegidos para Okta provisioning (por ejemplo, Basic Auth)
+- Verificación de roles para operaciones administrativas via `x-user-roles`
+
+### Autorización
+- **Admin**: Acceso completo a gestión y cambio de estatus
+- **User**: Acceso a crear solicitudes y ver propias solicitudes
+
+### Validaciones
+- Validación de roles válidos
+- Sanitización de datos de entrada
+- Headers de contexto de usuario desde API Gateway
 
 ## Instalación y Ejecución
 
 ### Prerrequisitos
-- Java 17+
-- Maven 3.6+
-- Cuenta AWS con acceso a DynamoDB y SES
+- Java 11 o superior
+- Maven
 - AWS CLI configurado
-- **Para Lambda**: AWS SAM CLI (recomendado) o AWS CLI
 
-### Pasos de Despliegue
-
+### Pasos de Instalación
 1. **Clonar el repositorio**
    ```bash
-   git clone <repository-url>
-   cd PresupuestoBackendMVN
+   git clone https://github.com/tu-usuario/presupuesto-backend.git
+   cd presupuesto-backend
    ```
 
-2. **Configurar Parameter Store**
+2. **Construir el proyecto**
    ```bash
-   # Configurar parámetros por ambiente
-   ENVIRONMENT=qa ./aws-scripts/create-parameter-store.sh
-   # o en Windows
-   set ENVIRONMENT=qa && aws-scripts\create-parameter-store.bat
+   mvn clean package
    ```
 
 3. **Crear tablas en DynamoDB**
    ```bash
    # Ejecutar scripts con prefijo de ambiente
    ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-solicitudes-presupuesto-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-solicitantes-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-proveedores-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-departamentos-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-categorias-gasto-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-scim-users-aws.sh
+   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-scim-groups-aws.sh
    # ... otros scripts según necesidad
    ```
 
-4. **Compilar y Desplegar en Lambda**
-   ```bash
-   # Compilar para Lambda
-   mvn clean package
-   
-   # Desplegar función Lambda (configurar según tu setup)
-   aws lambda update-function-code --function-name presupuesto-backend-qa \
-     --zip-file fileb://target/presupuesto-backend-1.0.0-SNAPSHOT-aws.jar
-   ```
+4. **Configurar variables de entorno**
+   - `ENVIRONMENT`: `dev`, `qa`, o `prod`
+   - `SPRING_PROFILES_ACTIVE`: `lambda,{environment}`
+   - `AWS_REGION`: Región de AWS (ej: `us-east-2`)
 
-### Desarrollo Local (Opcional)
-Para desarrollo y pruebas locales:
-```bash
-# Perfil de desarrollo sin autenticación
-java -jar target/presupuesto-backend.jar --spring.profiles.active=dev
-# Acceder a http://localhost:8080
-```
-   ```
-
-   **Opción C: Helper Interactivo**
+5. **Ejecutar la aplicación**
    ```bash
-   # Linux/Mac
-   ./aws-scripts/layer-helper.sh
-   
-   # Windows
-   aws-scripts\layer-helper.bat
-   ```
-
-   **Opción D: AWS Lambda con SAM**
-   ```bash
-   # Instalar SAM CLI
-   # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
-   
-   chmod +x deploy-sam.sh
-   ./deploy-sam.sh
-   ```
-
-5. **Verificar instalación**
-   ```bash
-   # Verificar health check en API Gateway
-   curl https://your-api-gateway-url/health
-   
-   # Ver logs de Lambda
-   aws logs tail /aws/lambda/presupuesto-backend-qa --follow
+   java -jar target/presupuesto-backend.jar --spring.profiles.active=dev
+   # Se ejecuta en http://localhost:8080 sin SSL
    ```
 
 ## Uso de Importación CSV
@@ -260,151 +201,139 @@ curl -X POST \
 
 ## Testing
 
-### Ejecutar tests
-```bash
-mvn test
+- Pruebas unitarias: `mvn test`
+- Pruebas de integración: `mvn verify`
+
+## Estructura del Proyecto
+
+```
+presupuesto-backend
+├── src
+│   ├── main
+│   │   ├── java
+│   │   │   └── com
+│   │   │       └── cdc
+│   │   │           └── presupuesto
+│   │   │               ├── controller
+│   │   │               ├── model
+│   │   │               ├── repository
+│   │   │               └── service
+│   │   └── resources
+│   │       ├── application-dev.yml
+│   │       ├── application-prod.yml
+│   │       └── application-qa.yml
+│   └── test
+│       └── java
+│           └── com
+│               └── cdc
+│                   └── presupuesto
+└── pom.xml
 ```
 
-### Test de importación CSV
-```bash
-# Usar el archivo sample_usuarios.csv incluido
-curl -X POST \
-  -H "Authorization: Bearer your-admin-token" \
-  -F "file=@sample_usuarios.csv" \
-  http://localhost:8080/api/usuarios/import-csv
-```
+## Notas Adicionales
 
-## Estructura de Datos
+- Asegúrate de tener las credenciales de AWS configuradas en tu entorno para poder acceder a los servicios de AWS.
+- Revisa los scripts de creación de tablas en `dynamodb-scripts/` para más detalles sobre la estructura de las tablas.
+- Para el despliegue en producción, sigue las guías específicas de AWS Lambda y API Gateway.
 
-### Usuario
-```json
-{
-  "id": "uuid",
-  "email": "usuario@empresa.com",
-  "nombre": "Nombre Completo",
-  "numeroEmpleado": "EMP001",
-  "role": "User|Admin",
-  "departamento": "IT",
-  "area": "Sistemas",
-  "activo": "true",
-  "fechaCreacion": "2025-01-01 10:00:00",
-  "fechaActualizacion": "2025-01-01 10:00:00"
-}
-```
+---
 
-### Solicitud de Presupuesto
-```json
-{
-  "id": "uuid",
-  "numEmpleado": "EMP001",
-  "fechaSolicitud": "2025-01-01",
-  "area": "IT",
-  "departamento": "Sistemas",
-  "subdepartamento": "Desarrollo",
-  "proveedor": "Proveedor XYZ",
-  "categoriaGasto": "Software",
-  "monto": 1000.00,
-  "estatus": "Pendiente",
-  "comentarios": "Comentarios adicionales"
-}
-```
+Este documento será actualizado conforme el sistema evoluciona y se añaden nuevas funcionalidades o se realizan cambios en la arquitectura.
 
-## Seguridad
+---
 
-### Autenticación via API Gateway
-- Headers de usuario válidos requeridos para todas las operaciones
-- Verificación de roles para operaciones administrativas via `x-user-roles`
+### Paso a paso para usar SCIM Connection con Okta
 
-### Autorización
-- **Admin**: Acceso completo a gestión y cambio de estatus
-- **User**: Acceso a crear solicitudes y ver propias solicitudes
+1. **Verifica endpoints SCIM en el backend**  
+   El backend expone los endpoints SCIM estándar bajo `/scim/v2/Users` y `/scim/v2/Groups` (ya implementados en `ScimController.java`).
 
-### Validaciones
-- Validación de emails únicos en solicitantes
-- Validación de roles válidos
-- Sanitización de datos de entrada
-- Headers de contexto de usuario desde API Gateway
+2. **Configura el token de autenticación SCIM**  
+   El backend espera un token Bearer en el header `Authorization`. El valor por defecto es:  
+   `scim-2025-qa-SECRET-TOKEN-123456`  
+   Puedes cambiarlo en la variable de entorno o en `application.properties` usando la propiedad `scim.token`.
 
-## Monitoreo y Logs
+3. **Configura la URL base SCIM en Okta**  
+   La URL base para Okta debe ser:  
+   ```
+   https://<tu-dominio-backend>/scim/v2
+   ```
+   Ejemplo para QA:  
+   ```
+   https://api-qa.tuempresa.com/scim/v2
+   ```
 
-### Health Check
-```bash
-# En API Gateway URL
-curl https://your-api-gateway-url/health
+4. **Configura el token Bearer en Okta**  
+   En Okta, en la sección de SCIM Connection, pon el token en el campo Authorization (solo el valor, sin "Bearer ").
 
-# Para desarrollo local
-curl http://localhost:8080/health
-```
+5. **Configura los endpoints en Okta**  
+   Okta detecta automáticamente los endpoints `/Users` y `/Groups` bajo la URL base.
 
-### Testing y Validación
-```bash
-# Verificar health check
-curl https://your-api-gateway-url/health
+6. **Configura los atributos requeridos**  
+   Los atributos soportados por el backend están en el README y son compatibles con el estándar SCIM (ver ejemplos en README).
 
-# Ver logs en CloudWatch
-aws logs tail /aws/lambda/presupuesto-backend-qa --follow
+---
 
-# Probar endpoints
-curl -X POST https://your-api-gateway-url/api/userInfo \
-  -H "x-user-id: test@example.com" \
-  -H "x-user-roles: Admin"
-```
+### Información para configurar en Okta
 
-### Logs y Monitoreo
-- **CloudWatch Logs**: `/aws/lambda/presupuesto-backend-{environment}`
-- **Metrics**: Duración, errores, cold starts automáticamente en CloudWatch
-- **X-Ray**: Tracing distribuido (opcional, configurable)
-- **API Gateway Logs**: Request/response logging configurado por ambiente
+#### Configuración SCIM en Okta
 
-## Arquitectura Lambda-First
+- **SCIM Base URL:**  
+  `https://<tu-dominio-backend>/scim/v2`
 
-### Beneficios del Diseño Serverless
-- **Costo**: Solo pagas por requests ejecutados
-- **Escalabilidad**: Automática según demanda
-- **Mantenimiento**: Sin administración de servidores
-- **Seguridad**: Aislamiento por ejecución
-- **Disponibilidad**: Alta disponibilidad multi-AZ automática
+- **Autenticación:**  
+  - Tipo: HTTP Header
+  - Header: `Authorization`
+  - Valor: `Bearer scim-2025-qa-SECRET-TOKEN-123456`  
+    *(o el valor configurado en la propiedad `scim.token`)*
 
-### Optimizaciones Implementadas
-- **Cold Start**: Lazy initialization y configuración mínima
-- **Memory**: Configurado para balance costo/performance
-- **Timeout**: Ajustado según tipo de operación
-- **Environment**: Variables y Parameter Store para configuración dinámica
+- **Atributos soportados para usuarios:**  
+  - `userName`
+  - `name.given`
+  - `name.family`
+  - `emails.value`
+  - `active`
+  - `roles`
 
-### Configuración de Ambientes
+- **Atributos soportados para grupos:**  
+  - `displayName`
+  - `members.value`
+  - `members.display`
 
-### Configuración de Ambientes
-Para más detalles sobre configuración específica por ambiente, consultar:
-- **ENVIRONMENT-CONFIGURATION.md**: Configuración completa por ambiente
-- **Parameter Store**: Configuración dinámica centralizada
-- **DynamoDB Scripts**: Scripts de creación de tablas con prefijos
+- **Endpoints:**  
+  - `/scim/v2/Users`
+  - `/scim/v2/Users/{id}`
+  - `/scim/v2/Groups`
+  - `/scim/v2/Groups/{id}`
 
-### Seguridad y Autenticación
-- **API Gateway Authorizer**: Autenticación centralizada
-- **Roles**: Admin/User manejados via headers
-- **Stateless**: Diseño completamente sin estado para Lambda
-- **CORS**: Configurado dinámicamente por ambiente
+- **Métodos soportados:**  
+  - GET, POST, PUT, PATCH, DELETE
 
-## Contribuir
+- **Token de prueba para QA:**  
+  `scim-2025-qa-SECRET-TOKEN-123456`
 
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crear un Pull Request
+- **Ejemplo de header:**  
+  ```
+  Authorization: Bearer scim-2025-qa-SECRET-TOKEN-123456
+  ```
 
-## Documentación Adicional
+- **Notas:**  
+  - El token puede cambiar por ambiente (`dev`, `qa`, `prod`).
+  - El endpoint `/scim/v2` debe estar accesible desde Okta (firewall, CORS, etc).
+  - El backend responde con los atributos SCIM estándar.
 
-- **ENVIRONMENT-CONFIGURATION.md**: Configuración detallada por ambiente
-- **AWS Parameter Store**: Configuración de parámetros
-- **deploy-scripts/README-LEGACY.md**: Scripts legacy (no usar)
+## Recomendaciones de mejora
 
-## Licencia
+- **Endpoints:** Documenta todos los endpoints públicos y protegidos, incluyendo `/usuario/saml-info` si lo agregas en la raíz.
+- **SCIM:** Asegúrate que todos los objetos usuario SCIM incluyan el atributo `"id"` y que los métodos de listado y creación lo agreguen si falta.
+- **SAML2:** Usa siempre los valores de entityId, SSO URL y certificado desde AWS Parameter Store o properties, nunca hardcode.
+- **Seguridad:** Revisa que los endpoints realmente públicos estén permitidos en SecurityConfig y que los protegidos usen roles y/o tokens.
+- **CORS:** Valida que los orígenes permitidos sean los mínimos necesarios para QA y producción.
+- **Logging:** Usa niveles de logging apropiados por ambiente (`DEBUG` en dev/qa, `INFO`/`WARN` en prod).
+- **Pruebas:** Agrega ejemplos de pruebas con `curl` para cada endpoint principal.
+- **DynamoDB:** Documenta los índices secundarios y las claves de cada tabla en DYNAMODB.md.
+- **Variables de entorno:** Documenta todas las variables requeridas y opcionales en ENVIRONMENT-CONFIGURATION.md.
+- **Manejo de errores:** Asegúrate que todos los endpoints devuelvan mensajes claros y estructurados en caso de error.
+- **Despliegue:** Documenta el proceso de despliegue en Lambda y la integración con API Gateway.
+- **Dependencias:** Revisa y elimina dependencias duplicadas en el pom.xml (por ejemplo, versiones repetidas de spring-security-saml2-service-provider).
 
-Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para detalles.
-
-## Soporte
-
-Para soporte técnico o preguntas, contactar a:
-- Email: soporte@empresa.com
-- Documentación: Ver documentación específica en archivos MD del proyecto
+- **Stage:** El valor del stage (`/dev`, `/qa`, `/prod`) se define en los archivos de configuración y se usa en rutas, redirecciones y seguridad para asegurar que los endpoints y redirecciones sean correctos según el ambiente.

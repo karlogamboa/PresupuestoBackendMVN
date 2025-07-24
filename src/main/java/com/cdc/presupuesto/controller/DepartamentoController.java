@@ -1,7 +1,5 @@
 package com.cdc.presupuesto.controller;
 
-import com.cdc.presupuesto.util.UserAuthUtils;
-
 import com.cdc.presupuesto.model.Departamento;
 import com.cdc.presupuesto.service.DepartamentoService;
 import com.opencsv.exceptions.CsvException;
@@ -18,7 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/departamentos")

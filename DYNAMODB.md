@@ -1,86 +1,70 @@
 # Uso de DynamoDB en PresupuestoBackendMVN
 
-Este documento describe cómo se utiliza Amazon DynamoDB en el backend de presupuestos, incluyendo la estructura de tablas, mejores prácticas y recomendaciones para desarrollo y producción.
-
----
-
-## 📚 Índice
-- [Visión General](#visión-general)
-- [Estructura de Tablas](#estructura-de-tablas)
-- [Nombres y Convenciones](#nombres-y-convenciones)
-- [Configuración por Ambiente](#configuración-por-ambiente)
-- [Acceso desde el Backend](#acceso-desde-el-backend)
-- [Buenas Prácticas](#buenas-prácticas)
-- [Recomendaciones de Seguridad](#recomendaciones-de-seguridad)
-- [Recursos Útiles](#recursos-útiles)
-
----
-
-## Visión General
-
-El backend utiliza DynamoDB como base de datos NoSQL principal para almacenar solicitudes de presupuesto y otros datos relacionados. Todas las operaciones CRUD se realizan a través del SDK de AWS para Java, y la configuración de tablas es dinámica según el ambiente (dev, qa, prod).
+Este documento explica cómo se utiliza DynamoDB en el proyecto PresupuestoBackendMVN, incluyendo la estructura de tablas y ejemplos de uso.
 
 ## Estructura de Tablas
 
 Por defecto, cada ambiente tiene su propio prefijo de tabla. Ejemplo de tablas principales:
 
 - **Solicitudes de Presupuesto**: `fin-dynamodb-<env>-presupuesto-solicitudes`
-- (Agregar otras tablas si existen)
+- **Proveedores**: `fin-dynamodb-<env>-presupuesto-proveedores`
+- **Departamentos**: `fin-dynamodb-<env>-presupuesto-departamentos`
+- **Categorías de Gasto**: `fin-dynamodb-<env>-presupuesto-categorias-gasto`
+- **SCIM Users**: `fin-dynamodb-<env>-presupuesto-scim-users`
+- **SCIM Groups**: `fin-dynamodb-<env>-presupuesto-scim-groups`
 
-### Ejemplo de Estructura: `solicitudes`
-| Atributo         | Tipo      | Descripción                        |
-|------------------|-----------|------------------------------------|
-| `id`             | String    | Clave primaria (PK)                |
-| `fechaCreacion`  | String    | Fecha de creación (ISO8601)        |
-| `usuarioId`      | String    | ID del usuario solicitante         |
-| `estado`         | String    | Estado de la solicitud             |
-| ...              | ...       | Otros atributos relevantes         |
+> **Nota:** El prefijo de las tablas incluye el valor del stage (`dev`, `qa`, `prod`) definido en la propiedad `stage` de configuración.
 
-> **Nota:** La estructura exacta puede variar según la evolución del modelo de negocio. Consultar el código fuente para detalles actualizados.
+### Ejemplo de Estructura de Tabla: Solicitudes de Presupuesto
 
-## Nombres y Convenciones
+- **Nombre de la tabla**: `fin-dynamodb-dev-presupuesto-solicitudes`
+- **Clave primaria**:
+  - **Partition key**: `id` (String)
+  - **Sort key**: `solicitudId` (String)
+- **Índices secundarios**:
+  - `numeroEmpleado-index`: Para buscar por número de empleado
+  - `estatusConfirmacion-index`: Para buscar por estatus de confirmación
 
-- **Prefijo:** `fin-dynamodb-<env>-presupuesto-`
-  - `<env>` puede ser `dev`, `qa` o `prod`.
-- **Separación por ambiente:** Cada ambiente tiene sus propias tablas para evitar colisiones y facilitar pruebas.
-- **Variables de entorno:** El prefijo puede ser sobrescrito usando la variable `TABLE_PREFIX`.
+### Tipos de Datos
 
-## Configuración por Ambiente
+- **String**: Cadenas de texto.
+- **Number**: Números (enteros o decimales).
+- **Boolean**: Valores verdadero/falso.
+- **List**: Listas de valores.
+- **Map**: Objetos con pares clave-valor.
 
-- **Desarrollo:** `fin-dynamodb-dev-presupuesto-*`
-- **QA:**        `fin-dynamodb-qa-presupuesto-*`
-- **Producción:**`fin-dynamodb-prod-presupuesto-*`
+> **Nota:** Consulta los modelos Java para la estructura exacta y actualizada de cada entidad.
 
-La selección del prefijo es automática según la variable de entorno `ENVIRONMENT` y/o `TABLE_PREFIX`.
+## Configuración de Acceso a DynamoDB
 
-## Acceso desde el Backend
+Asegúrate de tener las credenciales de AWS configuradas en tu entorno. Puedes hacerlo a través de variables de entorno, archivo de credenciales de AWS, o roles de IAM si estás ejecutando en AWS.
 
-- El acceso a DynamoDB se realiza usando el AWS SDK v2 para Java.
-- Las credenciales y la región se obtienen automáticamente desde el entorno Lambda.
-- El nombre de la tabla se construye dinámicamente según el ambiente.
-- La configuración sensible (por ejemplo, throughput, índices secundarios) se gestiona desde AWS Console o IaC (CloudFormation/Terraform).
+### Ejemplo de Variables de Entorno
 
-## Buenas Prácticas
+```bash
+export AWS_ACCESS_KEY_ID=tu_access_key_id
+export AWS_SECRET_ACCESS_KEY=tu_secret_access_key
+export AWS_REGION=us-east-1
+```
 
-- **Claves primarias simples:** Usar claves simples y predecibles (`id` tipo UUID).
-- **Índices secundarios:** Definir GSI/LSI solo si es necesario para queries específicas.
-- **Evitar scans:** Usar queries por clave primaria o índices para eficiencia.
-- **Tamaño de ítem:** Mantener los ítems pequeños (< 400 KB).
-- **Backups:** Configurar backups automáticos en producción.
-- **Provisionamiento:** Usar modo on-demand salvo que se requiera throughput fijo.
+### Ejemplo de Uso en Código Java
 
-## Recomendaciones de Seguridad
+```java
+@Autowired
+private DynamoDbEnhancedClient enhancedClient;
 
-- **Principio de menor privilegio:** El rol Lambda debe tener permisos mínimos sobre las tablas necesarias.
-- **No exponer datos sensibles:** Evitar almacenar información sensible sin cifrado.
-- **Auditoría:** Habilitar CloudTrail para monitoreo de accesos.
+public List<SolicitudPresupuesto> findAllSolicitudes() {
+    DynamoDbTable<SolicitudPresupuesto> table = enhancedClient.table("fin-dynamodb-dev-presupuesto-solicitudes", TableSchema.fromBean(SolicitudPresupuesto.class));
+    return table.scan().items().stream().collect(Collectors.toList());
+}
+```
 
-## Recursos Útiles
+## Consideraciones
 
-- [Documentación DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/)
-- [SDK AWS para Java v2](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/home.html)
-- [Best Practices DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
+- Asegúrate de manejar correctamente las excepciones al interactuar con DynamoDB.
+- Utiliza los índices secundarios para mejorar el rendimiento de las consultas.
+- Revisa las políticas de acceso a los recursos de AWS para garantizar la seguridad de los datos.
 
----
+## Más Información
 
-> **Actualizado:** Julio 2025
+Para más detalles sobre cómo usar DynamoDB, consulta la [documentación oficial de DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Introduction.html).

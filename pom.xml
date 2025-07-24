@@ -120,40 +120,48 @@
         </dependency>
         -->
 
-        <!-- Test Dependencies -->
+        <!-- JWT library -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.3</version>
         </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
+        </dependency>
+
         
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
         
         <!-- SAML/OpenSAML dependencies -->
         <dependency>
             <groupId>org.opensaml</groupId>
             <artifactId>opensaml-core</artifactId>
-            <version>3.4.6</version>
+            <version>4.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.opensaml</groupId>
             <artifactId>opensaml-saml-api</artifactId>
-            <version>3.4.6</version>
+            <version>4.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.opensaml</groupId>
             <artifactId>opensaml-saml-impl</artifactId>
-            <version>3.4.6</version>
+            <version>4.1.1</version>
         </dependency>
+        <!-- Jakarta Servlet API (remove scope so it's included in the deployment artifact) -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
             <version>6.0.0</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -295,7 +303,10 @@
     </profiles>
 
     <repositories>
-        <!-- Remove OSSRH repositories, Maven Central is enough for 3.x -->
+        <repository>
+            <id>shibboleth</id>
+            <url>https://build.shibboleth.net/maven/releases/</url>
+        </repository>
     </repositories>
 
 </project>

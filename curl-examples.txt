@@ -1,0 +1,35 @@
+# Verifica si el endpoint /usuario/saml-info está accesible (sin autenticación)
+curl -i https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/usuario/saml-info
+
+# Si requiere autenticación, agrega el header Authorization:
+curl -i https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/usuario/saml-info \
+  -H "Authorization: Bearer scim-2025-qa-SECRET-TOKEN-123456"
+
+# Para probar otros endpoints públicos:
+curl -i https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/health
+curl -i https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/scim/v2/Users \
+  -H "Authorization: Bearer scim-2025-qa-SECRET-TOKEN-123456"
+
+# El resultado HTTP/1.1 403 Forbidden indica que el backend está bloqueando el acceso.
+# Verifica en tu SecurityConfig que la ruta /usuario/saml-info esté permitida:
+# Debes tener .requestMatchers("/usuario/saml-info").permitAll()
+# Si ya está, revisa si el controlador existe y está mapeado correctamente.
+
+# Si el endpoint no existe o está protegido por @PreAuthorize, el backend responderá 403.
+# Revisa los logs de Spring Boot para detalles del rechazo.
+
+# Para verificar si tienes el endpoint /usuario/saml-info implementado:
+# 1. Busca en tu código un controlador con @RequestMapping("/usuario") o @GetMapping("/saml-info").
+# 2. Ejemplo mínimo de implementación en Spring Boot:
+
+# @RestController
+# @RequestMapping("/usuario")
+# public class UsuarioController {
+#     @GetMapping("/saml-info")
+#     public ResponseEntity<String> samlInfo() {
+#         return ResponseEntity.ok("{\"status\":\"ok\"}");
+#     }
+# }
+
+# Si no existe este controlador, el backend responderá 403 o 404.
+# Si existe y está permitido en SecurityConfig, debe responder 200 OK.

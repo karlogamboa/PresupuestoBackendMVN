@@ -2,13 +2,10 @@ package com.cdc.presupuesto.controller;
 
 import com.cdc.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.presupuesto.repository.SolicitudPresupuestoRepository;
-import com.cdc.presupuesto.service.UserInfoService;
 import com.cdc.presupuesto.util.UserAuthUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +20,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
-// ...eliminado: anotaciones de OpenAPI/Swagger
 public class SolicitudPresupuestoController {
 
     private static final Logger logger = LoggerFactory.getLogger(SolicitudPresupuestoController.class);
@@ -31,8 +27,6 @@ public class SolicitudPresupuestoController {
     @Autowired
     private SolicitudPresupuestoRepository solicitudPresupuestoRepository;
 
-    @Autowired
-    private UserInfoService userInfoService;
 
 
     @GetMapping
@@ -76,8 +70,9 @@ public class SolicitudPresupuestoController {
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
             // Obtener información del usuario autenticado
-            Map<String, Object> userInfo = userInfoService.getCurrentUserInfo();
             String userEmail = UserAuthUtils.getCurrentUserEmail();
+            String userName = UserAuthUtils.getCurrentUserName();
+            String userId = UserAuthUtils.getCurrentUserId();
 
             // Generar ID único si no existe
             if (solicitud.getId() == null || solicitud.getId().isEmpty()) {
@@ -95,12 +90,11 @@ public class SolicitudPresupuestoController {
             }
 
             if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
-                solicitud.setSolicitante(userInfo.get("nombre") != null ? userInfo.get("nombre").toString() : "");
+                solicitud.setSolicitante(userName);
             }
 
             if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
-                solicitud.setNumeroEmpleado(userInfo.get("numeroEmpleado") != null ? 
-                    userInfo.get("numeroEmpleado").toString() : "");
+                solicitud.setNumeroEmpleado(userId);
             }
 
             // Establecer fechas
@@ -295,7 +289,6 @@ public class SolicitudPresupuestoController {
         }
     }
 }
-
 
 
 
