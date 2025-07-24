@@ -278,12 +278,17 @@ Este documento será actualizado conforme el sistema evoluciona y se añaden nue
 #### Configuración SCIM en Okta
 
 - **SCIM Base URL:**  
-  `https://<tu-dominio-backend>/scim/v2`
+  `https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/scim/v2`
+
+- **Unique identifier field for users:**  
+  `id`
+  > El campo `id` es el identificador único para usuarios en DynamoDB y en el modelo SCIM.  
+  > Debe configurarse como el "Unique identifier field for users" en la conexión SCIM de Okta.
 
 - **Autenticación:**  
   - Tipo: HTTP Header
   - Header: `Authorization`
-  - Valor: `Bearer scim-2025-qa-SECRET-TOKEN-123456`  
+  - Valor: `Bearer scim-2025-qa-BEARER-2f8c1e7a4b7d4e8c9a1f6b3c2d5e7f8a`  
     *(o el valor configurado en la propiedad `scim.token`)*
 
 - **Atributos soportados para usuarios:**  
