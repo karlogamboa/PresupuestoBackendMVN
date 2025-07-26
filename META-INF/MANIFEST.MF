@@ -4,7 +4,7 @@ Build-Jdk-Spec: 21
 Implementation-Title: Presupuesto Backend
 Implementation-Version: 1.0.0-SNAPSHOT
 Main-Class: org.springframework.boot.loader.launch.JarLauncher
-Start-Class: com.cdc.presupuesto.PresupuestoBackendApplication
+Start-Class: com.cdc.fin.presupuesto.PresupuestoBackendApplication
 Spring-Boot-Version: 3.2.1
 Spring-Boot-Classes: BOOT-INF/classes/
 Spring-Boot-Lib: BOOT-INF/lib/

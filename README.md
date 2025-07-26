@@ -342,3 +342,32 @@ Este documento será actualizado conforme el sistema evoluciona y se añaden nue
 - **Dependencias:** Revisa y elimina dependencias duplicadas en el pom.xml (por ejemplo, versiones repetidas de spring-security-saml2-service-provider).
 
 - **Stage:** El valor del stage (`/dev`, `/qa`, `/prod`) se define en los archivos de configuración y se usa en rutas, redirecciones y seguridad para asegurar que los endpoints y redirecciones sean correctos según el ambiente.
+
+## Ejemplo de consulta de usuarios SCIM con curl
+
+```sh
+# curl para listar usuarios SCIM con el token configurado
+curl -X GET "https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/scim/v2/Users" \
+  -H "Authorization: Bearer scim-2025-qa-BEARER-2f8c1e7a4b7d4e8c9a1f6b3c2d5e7f8a"
+```
+
+## Ejemplo de creación de usuario SCIM con curl
+
+```sh
+curl -X POST "https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/scim/v2/Users" \
+  -H "Authorization: Bearer scim-2025-qa-BEARER-2f8c1e7a4b7d4e8c9a1f6b3c2d5e7f8a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "karlo+cdc@zicral.com",
+    "name": {
+      "givenName": "Karlo",
+      "familyName": "Gamboa"
+    },
+    "emails": [{
+      "value": "karlo+cdc@zicral.com",
+      "primary": true
+    }],
+    "active": true
+  }'
+```
