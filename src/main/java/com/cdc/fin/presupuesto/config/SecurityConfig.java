@@ -32,28 +32,41 @@ import org.springframework.util.StreamUtils;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
+import com.cdc.fin.presupuesto.util.OktaSAMLHelper;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
-    @Value("${security.jwt.secret:supersecretkey123}")
+    private final com.cdc.fin.presupuesto.service.ScimUserService scimUserService;
+
+    public SecurityConfig(com.cdc.fin.presupuesto.service.ScimUserService scimUserService) {
+        this.scimUserService = scimUserService;
+    }
+
+    @Value("${security.jwt.secret}")
     private String jwtSecret;
 
-    @Value("${security.jwt.expiration-ms:3600000}")
+    @Value("${security.jwt.expiration-ms}")
     private long jwtExpirationMs;
 
     @Value("${spring.security.saml2.relyingparty.registration.okta-saml.assertingparty.metadata-uri}")
-    private String samlMetadataUrl;
+    private String samlAssertingPartyMetadataUrl;
 
     @Value("${spring.security.saml2.relyingparty.registration.okta-saml.assertingparty.entity-id}")
-    private String samlEntityId;
+    private String samlAssertingPartyEntityId;
 
-    @Value("${spring.security.saml2.relyingparty.registration.okta-saml.assertingparty.sso-url:https://trial-4567848.okta.com/app/exktiw7x5dBKBcgUs697/sso/saml}")
-    private String samlSsoUrl;
+    @Value("${spring.security.saml2.relyingparty.registration.okta-saml.entity-id}")
+    private String oktaEntityId;
 
-    @Value("${frontend.redirect-url:https://d38gv65skwp3eh.cloudfront.net}")
+    @Value("${spring.security.saml2.relyingparty.registration.okta-saml.assertion-consumer-service.location}")
+    private String samlAssertionConsumerServiceLocation;
+
+    @Value("${spring.security.saml2.relyingparty.registration.okta-saml.assertingparty.sso-url}")
+    private String samlAssertingPartySsoUrl;
+
+    @Value("${frontend.redirect-url}")
     private String frontendRedirectUrl;
 
     @Value("${stage:qa}")
@@ -88,7 +101,7 @@ public class SecurityConfig {
         // Permite solo frontend y Okta (origins, not patterns)
         config.setAllowedOrigins(Arrays.asList(
             "https://d38gv65skwp3eh.cloudfront.net",
-            "https://trial-4567848.okta.com"
+            "https://trial-4567848.okta.com", "https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com"
         ));
         config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -100,15 +113,15 @@ public class SecurityConfig {
 
     @Bean
     public RelyingPartyRegistrationRepository relyingPartyRegistrationRepository() {
-        X509Certificate oktaCertificate = loadOktaCertificateFromMetadata(samlMetadataUrl);
+        X509Certificate oktaCertificate = loadOktaCertificateFromMetadata(samlAssertingPartyMetadataUrl);
 
         RelyingPartyRegistration registration = RelyingPartyRegistration
             .withRegistrationId("okta-saml")
-            .entityId("https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/login/saml2/sso/okta-saml")
-            .assertionConsumerServiceLocation("https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/login/saml2/sso/okta-saml")
+            .entityId(oktaEntityId)
+            .assertionConsumerServiceLocation(samlAssertionConsumerServiceLocation)
             .assertingPartyDetails(party -> party
-                .entityId(samlEntityId)
-                .singleSignOnServiceLocation(samlSsoUrl)
+                .entityId(samlAssertingPartyEntityId)
+                .singleSignOnServiceLocation(samlAssertingPartySsoUrl)
                 .wantAuthnRequestsSigned(false)
                 .verificationX509Credentials(c -> {
                     if (oktaCertificate != null) {
@@ -118,7 +131,6 @@ public class SecurityConfig {
                     }
                 })
             )
-            // No signingX509Credentials
             .build();
         return new InMemoryRelyingPartyRegistrationRepository(registration);
     }
@@ -131,10 +143,40 @@ public class SecurityConfig {
             public void onAuthenticationSuccess(jakarta.servlet.http.HttpServletRequest request, jakarta.servlet.http.HttpServletResponse response,
                                                 org.springframework.security.core.Authentication authentication) throws IOException {
                 String username = authentication.getName();
-                String jwt = Jwts.builder()
+                Map<String, Object> samlClaims = new HashMap<>();
+                // Obtener el SAMLResponse en Base64 si Okta lo envía como parámetro POST
+                String samlResponseBase64 = request.getParameter("SAMLResponse");
+                if (samlResponseBase64 != null && !samlResponseBase64.isEmpty()) {
+                    try {
+                        OktaSAMLHelper.initializeSAML();
+                        Map<String, java.util.List<String>> samlAttrs = OktaSAMLHelper.getUserAttributes(samlResponseBase64);
+                        logger.info("SAML attributes at login: {" + samlAttrs + "}");
+                        // Flatten attributes for JWT claims
+                        for (Map.Entry<String, java.util.List<String>> entry : samlAttrs.entrySet()) {
+                            if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+                                samlClaims.put(entry.getKey(), entry.getValue().size() == 1 ? entry.getValue().get(0) : entry.getValue());
+                            }
+                        }
+                        // Actualiza SCIM users en DynamoDB
+                        try {
+                            scimUserService.updateUserWithSamlAttributes(username, samlClaims);
+                        } catch (Exception ex) {
+                            logger.error("[SCIM] Error actualizando usuario en DynamoDB: " + username, ex);
+                        }
+                        logger.info("[SCIM] Actualizando usuario en DynamoDB: " + username + " con atributos: " + samlClaims);
+                    } catch (Exception e) {
+                        logger.warn("Error parsing SAML attributes: {" + e.getMessage() + "}");
+                    }
+                }
+                JwtBuilder jwtBuilder = Jwts.builder()
                         .setSubject(username)
                         .setIssuedAt(new Date())
-                        .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                        .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs));
+                // Agrega los atributos SAML como claims
+                for (Map.Entry<String, Object> entry : samlClaims.entrySet()) {
+                    jwtBuilder.claim(entry.getKey(), entry.getValue());
+                }
+                String jwt = jwtBuilder
                         .signWith(SignatureAlgorithm.HS256, jwtSecret.getBytes())
                         .compact();
                 String redirectUrl = frontendRedirectUrl + "?token=" + jwt;
@@ -142,7 +184,7 @@ public class SecurityConfig {
             }
         };
     }
-
+    
     @Bean
     public Filter jwtAuthenticationFilter() {
         // Valida JWT en endpoints protegidos
@@ -151,33 +193,46 @@ public class SecurityConfig {
             public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
                     throws IOException, ServletException {
                 HttpServletRequest httpRequest = (HttpServletRequest) request;
+                String path = httpRequest.getRequestURI();
                 String authHeader = httpRequest.getHeader("Authorization");
+                boolean isScim = path.startsWith("/scim/v2/");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     String token = authHeader.substring(7);
                     logger.info("JWT Filter: Validating token: {}", token);
                     logger.info("JWT Filter: Using secret: {}", jwtSecret);
-                    try {
-                        Claims claims = Jwts.parser()
-                                .setSigningKey(jwtSecret.getBytes())
-                                .parseClaimsJws(token)
-                                .getBody();
-                        String username = claims.getSubject();
-                        String email = claims.get("email", String.class);
-                        List<String> roles = claims.get("roles", List.class);
-                        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                        if (roles != null) {
-                            for (String role : roles) {
-                                authorities.add(new SimpleGrantedAuthority(role));
-                            }
-                        } else {
-                            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-                        }
+                    if (isScim) {
+                        // Para SCIM, solo verifica que el token exista (no JWT estricto)
+                        // Puedes agregar validación extra si lo requieres
+                        logger.info("SCIM endpoint: Accepting simple bearer token");
+                        // Opcional: puedes setear un usuario dummy si lo necesitas
                         UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(username, null, authorities);
-                        authentication.setDetails(email); // Puedes usar un objeto custom si necesitas más atributos
+                                new UsernamePasswordAuthenticationToken("scim-client", null, List.of(new SimpleGrantedAuthority("ROLE_SCIM")));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
-                    } catch (Exception e) {
-                        logger.warn("JWT Filter: Invalid token. Secret used: {}. Token: {}", jwtSecret, token, e);
+                    } else {
+                        // Para otros endpoints, JWT estricto
+                        try {
+                            Claims claims = Jwts.parser()
+                                    .setSigningKey(jwtSecret.getBytes())
+                                    .parseClaimsJws(token)
+                                    .getBody();
+                            String username = claims.getSubject();
+                            String email = claims.get("email", String.class);
+                            List<String> roles = claims.get("roles", List.class);
+                            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                            if (roles != null) {
+                                for (String role : roles) {
+                                    authorities.add(new SimpleGrantedAuthority(role));
+                                }
+                            } else {
+                                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+                            }
+                            UsernamePasswordAuthenticationToken authentication =
+                                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+                            authentication.setDetails(email); // Puedes usar un objeto custom si necesitas más atributos
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                        } catch (Exception e) {
+                            logger.warn("JWT Filter: Invalid token. Secret used: {}. Token: {}", jwtSecret, token, e);
+                        }
                     }
                 }
                 chain.doFilter(request, response);

@@ -2,7 +2,6 @@ package com.cdc.fin.presupuesto.controller;
 
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.fin.presupuesto.repository.SolicitudPresupuestoRepository;
-import com.cdc.fin.presupuesto.util.UserAuthUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,9 +69,10 @@ public class SolicitudPresupuestoController {
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
             // Obtener información del usuario autenticado
-            String userEmail = UserAuthUtils.getCurrentUserEmail();
-            String userName = UserAuthUtils.getCurrentUserName();
-            String userId = UserAuthUtils.getCurrentUserId();
+            // String userEmail = UserAuthUtils.getCurrentUserEmail();
+            // String userName = UserAuthUtils.getCurrentUserName();
+            // String userId = UserAuthUtils.getCurrentUserId();
+            
 
             // Generar ID único si no existe
             if (solicitud.getId() == null || solicitud.getId().isEmpty()) {
@@ -85,17 +85,17 @@ public class SolicitudPresupuestoController {
             }
 
             // Establecer información del usuario si no está presente
-            if (solicitud.getCorreo() == null || solicitud.getCorreo().isEmpty()) {
-                solicitud.setCorreo(userEmail);
-            }
+            // if (solicitud.getCorreo() == null || solicitud.getCorreo().isEmpty()) {
+            //     solicitud.setCorreo(userEmail);
+            // }
 
-            if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
-                solicitud.setSolicitante(userName);
-            }
+            // if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
+            //     solicitud.setSolicitante(userName);
+            // }
 
-            if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
-                solicitud.setNumeroEmpleado(userId);
-            }
+            // if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
+            //     solicitud.setNumeroEmpleado(userId);
+            // }
 
             // Establecer fechas
             String fechaActual = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));

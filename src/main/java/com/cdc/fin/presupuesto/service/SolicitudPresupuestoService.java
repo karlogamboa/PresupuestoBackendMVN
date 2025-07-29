@@ -2,8 +2,8 @@ package com.cdc.fin.presupuesto.service;
 
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.fin.presupuesto.repository.SolicitudPresupuestoRepository;
-import com.cdc.fin.presupuesto.util.UserAuthUtils;
 import org.springframework.stereotype.Service;
+import org.bouncycastle.jcajce.provider.asymmetric.dsa.DSASigner.stdDSA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,12 +51,14 @@ public class SolicitudPresupuestoService {
 
     public SolicitudPresupuesto create(SolicitudPresupuesto solicitud) {
         // Obtener datos del usuario autenticado vía SAML/OKTA
-        String userEmail = UserAuthUtils.getCurrentUserEmail();
-        String userName = UserAuthUtils.getCurrentUserName();
+        // String userEmail = UserAuthUtils.getCurrentUserEmail();
+        // String userName = UserAuthUtils.getCurrentUserName();
         // String numeroEmpleado = UserAuthUtils.getCurrentUserEmployeeNumber(); // Implementar si es necesario
         // String departamento = UserAuthUtils.getCurrentUserDepartment(); // Implementar si es necesario
 
+        String userEmail ="";
         String id = UUID.randomUUID().toString();
+        String userName = "defaultUser"; // Placeholder, implement actual retrieval
         String solicitudId = solicitudPrefix + System.currentTimeMillis();
         
         solicitud.setId(id);
@@ -95,8 +97,9 @@ public class SolicitudPresupuestoService {
     public Optional<SolicitudPresupuesto> updateStatus(String id, String solicitudId, String nuevoEstatus, 
                                                       String comentarios) {
         // Obtener datos del usuario autenticado vía SAML/OKTA
-        String userEmail = UserAuthUtils.getCurrentUserEmail();
-        String userName = UserAuthUtils.getCurrentUserName();
+        // String userEmail = UserAuthUtils.getCurrentUserEmail();
+        // String userName = UserAuthUtils.getCurrentUserName();
+        String userEmail ="";
 
         Optional<SolicitudPresupuesto> existingSolicitud = repository.findById(id, solicitudId);
         

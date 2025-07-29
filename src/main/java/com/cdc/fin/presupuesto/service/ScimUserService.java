@@ -8,6 +8,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Service
 public class ScimUserService {
+    // Actualiza usuario con atributos SAML
+    public void updateUserWithSamlAttributes(String userName, java.util.Map<String, Object> samlAttrs) {
+        userRepository.updateUserWithSamlAttributes(userName, samlAttrs);
+    }
     private final ScimUserRepository userRepository;
 
     public ScimUserService(ScimUserRepository userRepository) {

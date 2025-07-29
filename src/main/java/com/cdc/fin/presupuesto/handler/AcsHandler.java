@@ -28,13 +28,13 @@ public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
     private static final Logger logger = LoggerFactory.getLogger(AcsHandler.class);
 
-    @Value("${cors.allowed.origins:https://d38gv65skwp3eh.cloudfront.net,https://trial-4567848.okta.com}")
+    @Value("${cors.allowed.origins}")
     private String corsAllowedOrigins;
 
-    @Value("${jwt.secret:supersecretkey123}")
+    @Value("${security.jwt.secret}")
     private String jwtSecret;
     
-    @Value("${frontend.redirect-url:https://d38gv65skwp3eh.cloudfront.net}")
+    @Value("${frontend.redirect-url}")
     private String frontEndUrl;
 
     @Override

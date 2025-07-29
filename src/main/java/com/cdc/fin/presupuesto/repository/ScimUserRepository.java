@@ -20,6 +20,41 @@ import java.util.regex.Pattern;
 
 @Repository
 public class ScimUserRepository {
+    // Actualiza atributos SAML en el usuario SCIM en DynamoDB
+    public void updateUserWithSamlAttributes(String userName, Map<String, Object> samlAttrs) {
+        if (dynamoDbClient == null || usersTable == null || usersTable.isEmpty() || userName == null) {
+            return;
+        }
+        // Buscar usuario por userName
+        QueryRequest queryRequest = QueryRequest.builder()
+            .tableName(usersTable)
+            .indexName("UserNameIndex") // Debes tener este GSI en DynamoDB
+            .keyConditionExpression("userName = :v_user")
+            .expressionAttributeValues(Map.of(":v_user", AttributeValue.builder().s(userName).build()))
+            .build();
+        QueryResponse response = dynamoDbClient.query(queryRequest);
+        if (response.hasItems() && !response.items().isEmpty()) {
+            Map<String, AttributeValue> item = response.items().get(0);
+            String userId = item.get("id").s();
+            Map<String, AttributeValue> updateValues = new HashMap<>();
+            // Puedes mapear los atributos SAML relevantes aquí
+            for (Map.Entry<String, Object> entry : samlAttrs.entrySet()) {
+                // Ejemplo: guardar como string JSON
+                updateValues.put(entry.getKey(), AttributeValue.builder().s(entry.getValue().toString()).build());
+            }
+            // Actualiza el usuario con los nuevos atributos
+            Map<String, AttributeValue> key = Map.of("id", AttributeValue.builder().s(userId).build());
+            Map<String, AttributeValueUpdate> updates = new HashMap<>();
+            for (Map.Entry<String, AttributeValue> entry : updateValues.entrySet()) {
+                updates.put(entry.getKey(), AttributeValueUpdate.builder().value(entry.getValue()).action(AttributeAction.PUT).build());
+            }
+            dynamoDbClient.updateItem(UpdateItemRequest.builder()
+                .tableName(usersTable)
+                .key(key)
+                .attributeUpdates(updates)
+                .build());
+        }
+    }
 
     @Autowired(required = false)
     private DynamoDbClient dynamoDbClient;
@@ -131,11 +166,14 @@ public class ScimUserRepository {
             ObjectMapper mapper = new ObjectMapper();
             for (Map<String, AttributeValue> item : response.items()) {
                 ScimUser user = new ScimUser();
-                user.setId(item.get("id").s());
-                user.setUserName(item.get("userName").s());
+                AttributeValue idAttr = item.get("id");
+                if (idAttr != null) user.setId(idAttr.s());
+                AttributeValue userNameAttr = item.get("userName");
+                if (userNameAttr != null) user.setUserName(userNameAttr.s());
                 user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
-                if (item.containsKey("name"))
-                    user.setName(mapper.readValue(item.get("name").s(), ScimUser.Name.class));
+                AttributeValue nameAttr = item.get("name");
+                if (nameAttr != null)
+                    user.setName(mapper.readValue(nameAttr.s(), ScimUser.Name.class));
                 ensureScimCompliance(user);
                 filteredUsers.add(user);
             }
@@ -165,11 +203,14 @@ public class ScimUserRepository {
             for (Map<String, AttributeValue> item : scanResponse.items()) {
                 try {
                     ScimUser user = new ScimUser();
-                    user.setId(item.get("id").s());
-                    user.setUserName(item.get("userName").s());
+                    AttributeValue idAttr = item.get("id");
+                    if (idAttr != null) user.setId(idAttr.s());
+                    AttributeValue userNameAttr = item.get("userName");
+                    if (userNameAttr != null) user.setUserName(userNameAttr.s());
                     user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
-                    if (item.containsKey("name"))
-                        user.setName(mapper.readValue(item.get("name").s(), ScimUser.Name.class));
+                    AttributeValue nameAttr = item.get("name");
+                    if (nameAttr != null)
+                        user.setName(mapper.readValue(nameAttr.s(), ScimUser.Name.class));
                     ensureScimCompliance(user);
                     userResources.add(user);
                 } catch (Exception e) {

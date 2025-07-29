@@ -31,7 +31,7 @@ public class ScimController {
         this.scimGroupService = scimGroupService;
     }
 
-    @Value("${scim.token:scim-2025-qa-BEARER-2f8c1e7a4b7d4e8c9a1f6b3c2d5e7f8a}")
+    @Value("${scim.token}")
     private String scimToken;
 
     private boolean isScimAuthorized(String authHeader) {
