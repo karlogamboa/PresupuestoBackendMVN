@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.cdc.fin.presupuesto.util.UserAuthUtils;
+import com.cdc.fin.presupuesto.model.ScimUser;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -23,10 +25,14 @@ public class SolicitudPresupuestoController {
 
     private static final Logger logger = LoggerFactory.getLogger(SolicitudPresupuestoController.class);
 
+    private final SolicitudPresupuestoRepository solicitudPresupuestoRepository;
+    private final UserAuthUtils userAuthUtils;
+
     @Autowired
-    private SolicitudPresupuestoRepository solicitudPresupuestoRepository;
-
-
+    public SolicitudPresupuestoController(SolicitudPresupuestoRepository solicitudPresupuestoRepository, UserAuthUtils userAuthUtils) {
+        this.solicitudPresupuestoRepository = solicitudPresupuestoRepository;
+        this.userAuthUtils = userAuthUtils;
+    }
 
     @GetMapping
     // No Swagger/OpenAPI annotations
@@ -68,11 +74,13 @@ public class SolicitudPresupuestoController {
     public ResponseEntity<SolicitudPresupuesto> createSolicitud(
             @RequestBody SolicitudPresupuesto solicitud) {
         try {
-            // Obtener información del usuario autenticado
-            // String userEmail = UserAuthUtils.getCurrentUserEmail();
-            // String userName = UserAuthUtils.getCurrentUserName();
-            // String userId = UserAuthUtils.getCurrentUserId();
-            
+            String email = solicitud.getCorreo();
+            ScimUser scimUser = userAuthUtils.getScimUserByEmail(email);
+
+            String userEmail = scimUser != null ? scimUser.getEmail() : email;
+            String userName = scimUser != null ? scimUser.getUserName() : null;
+            String numeroEmpleado = scimUser != null ? scimUser.getEmployeeNumber() : null;
+            String departamento = scimUser != null ? scimUser.getDepartment() : null;
 
             // Generar ID único si no existe
             if (solicitud.getId() == null || solicitud.getId().isEmpty()) {
@@ -85,17 +93,18 @@ public class SolicitudPresupuestoController {
             }
 
             // Establecer información del usuario si no está presente
-            // if (solicitud.getCorreo() == null || solicitud.getCorreo().isEmpty()) {
-            //     solicitud.setCorreo(userEmail);
-            // }
-
-            // if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
-            //     solicitud.setSolicitante(userName);
-            // }
-
-            // if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
-            //     solicitud.setNumeroEmpleado(userId);
-            // }
+            if (solicitud.getCorreo() == null || solicitud.getCorreo().isEmpty()) {
+                solicitud.setCorreo(userEmail);
+            }
+            if (solicitud.getSolicitante() == null || solicitud.getSolicitante().isEmpty()) {
+                solicitud.setSolicitante(userName);
+            }
+            if (solicitud.getNumeroEmpleado() == null || solicitud.getNumeroEmpleado().isEmpty()) {
+                solicitud.setNumeroEmpleado(numeroEmpleado);
+            }
+            if (solicitud.getDepartamento() == null || solicitud.getDepartamento().isEmpty()) {
+                solicitud.setDepartamento(departamento);
+            }
 
             // Establecer fechas
             String fechaActual = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));

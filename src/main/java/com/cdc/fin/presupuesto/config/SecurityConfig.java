@@ -144,6 +144,8 @@ public class SecurityConfig {
                                                 org.springframework.security.core.Authentication authentication) throws IOException {
                 String username = authentication.getName();
                 Map<String, Object> samlClaims = new HashMap<>();
+                List<String> roles = new ArrayList<>();
+
                 // Obtener el SAMLResponse en Base64 si Okta lo envía como parámetro POST
                 String samlResponseBase64 = request.getParameter("SAMLResponse");
                 if (samlResponseBase64 != null && !samlResponseBase64.isEmpty()) {
@@ -155,15 +157,16 @@ public class SecurityConfig {
                         for (Map.Entry<String, java.util.List<String>> entry : samlAttrs.entrySet()) {
                             if (entry.getValue() != null && !entry.getValue().isEmpty()) {
                                 samlClaims.put(entry.getKey(), entry.getValue().size() == 1 ? entry.getValue().get(0) : entry.getValue());
+                                // Si el atributo es "admin" o "user", agrégalo como rol
+                                if ("admin".equalsIgnoreCase(entry.getKey()) || "user".equalsIgnoreCase(entry.getKey())) {
+                                    roles.add(entry.getValue().get(0));
+                                }
                             }
                         }
-                        // Actualiza SCIM users en DynamoDB
-                        try {
-                            scimUserService.updateUserWithSamlAttributes(username, samlClaims);
-                        } catch (Exception ex) {
-                            logger.error("[SCIM] Error actualizando usuario en DynamoDB: " + username, ex);
+                        // Si no hay roles, usa "user" por defecto
+                        if (roles.isEmpty()) {
+                            roles.add("user");
                         }
-                        logger.info("[SCIM] Actualizando usuario en DynamoDB: " + username + " con atributos: " + samlClaims);
                     } catch (Exception e) {
                         logger.warn("Error parsing SAML attributes: {" + e.getMessage() + "}");
                     }
@@ -175,6 +178,10 @@ public class SecurityConfig {
                 // Agrega los atributos SAML como claims
                 for (Map.Entry<String, Object> entry : samlClaims.entrySet()) {
                     jwtBuilder.claim(entry.getKey(), entry.getValue());
+                }
+                // Agrega los roles como claim "roles"
+                if (!roles.isEmpty()) {
+                    jwtBuilder.claim("roles", roles);
                 }
                 String jwt = jwtBuilder
                         .signWith(SignatureAlgorithm.HS256, jwtSecret.getBytes())
@@ -198,8 +205,6 @@ public class SecurityConfig {
                 boolean isScim = path.startsWith("/scim/v2/");
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
                     String token = authHeader.substring(7);
-                    logger.info("JWT Filter: Validating token: {}", token);
-                    logger.info("JWT Filter: Using secret: {}", jwtSecret);
                     if (isScim) {
                         // Para SCIM, solo verifica que el token exista (no JWT estricto)
                         // Puedes agregar validación extra si lo requieres

@@ -44,11 +44,23 @@ public class ScimUser {
         private String value;
         @JsonProperty("primary")
         private Boolean primary;
+        @JsonProperty("type")
+        private String type;
+
+        public Email() {}
+
+        public Email(String value, Boolean primary, String type) {
+            this.value = value;
+            this.primary = primary;
+            this.type = type;
+        }
 
         public String getValue() { return value; }
         public void setValue(String value) { this.value = value; }
         public Boolean getPrimary() { return primary; }
         public void setPrimary(Boolean primary) { this.primary = primary; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
     }
 
     public String getId() { return id; }
@@ -65,4 +77,25 @@ public class ScimUser {
     public void setRoles(List<String> roles) { this.roles = roles; }
     public List<String> getSchemas() { return schemas; }
     public void setSchemas(List<String> schemas) { this.schemas = schemas; }
+
+    // SAML attributes
+    private String email;
+    private String given_name;
+    private String family_name;
+    private String employeeNumber;
+    private String userType;
+    private String department;
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getGiven_name() { return given_name; }
+    public void setGiven_name(String given_name) { this.given_name = given_name; }
+    public String getFamily_name() { return family_name; }
+    public void setFamily_name(String family_name) { this.family_name = family_name; }
+    public String getEmployeeNumber() { return employeeNumber; }
+    public void setEmployeeNumber(String employeeNumber) { this.employeeNumber = employeeNumber; }
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
 }

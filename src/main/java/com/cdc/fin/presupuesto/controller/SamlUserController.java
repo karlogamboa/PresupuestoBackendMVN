@@ -9,48 +9,64 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.HashMap;
-import com.cdc.fin.presupuesto.util.OktaSAMLHelper;
-import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import com.cdc.fin.presupuesto.util.UserAuthUtils;
+import com.cdc.fin.presupuesto.model.ScimUser;
 
 @RestController
 public class SamlUserController {
     private static final Logger logger = LoggerFactory.getLogger(SamlUserController.class);
 
-    
     @Value("${okta.slo.url:https://trial-4567848.okta.com/logout}")
     private String oktaLogoutUrl;
+
+    private final UserAuthUtils userAuthUtils;
+
+    public SamlUserController(UserAuthUtils userAuthUtils) {
+        this.userAuthUtils = userAuthUtils;
+    }
 
     @GetMapping("/saml/user")
     public Map<String, Object> samlUser(Authentication authentication) {
         Map<String, Object> result = new HashMap<>();
         logger.info("[SAML] authentication: {}", authentication);
+
+        String email = authentication.getPrincipal().toString();
+        ScimUser scimUser = userAuthUtils.getScimUserByEmail(email);
+
+        if (scimUser != null) {
+            result.put("email", email);
+            result.put("userName", scimUser.getName());
+            result.put("employeeNumber", scimUser.getEmployeeNumber());
+            result.put("department", scimUser.getDepartment());
+        } else {
+            result.put("email", email);
+            result.put("userName", null);
+            result.put("employeeNumber", null);
+            result.put("department", null);
+        }
+
+        // ...existing code for logging and extracting other details...
         if (authentication != null) {
-            logger.info("[SAML] principal: {}", authentication.getPrincipal());
+            logger.info("[SAML] principal: {}",email);
             logger.info("[SAML] details: {}", authentication.getDetails());
-            result.put("principal", authentication.getPrincipal());
+            result.put("principal", email);
             result.put("authorities", authentication.getAuthorities());
 
-            // Extrae claims del JWT si están disponibles
             if (authentication instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken token) {
                 Object details = token.getDetails();
-                if (details instanceof String email) {
-                    result.put("email", email);
+                if (details instanceof String emailToken) {
+                    result.put("email_from_token", emailToken);
                 }
             }
 
-            // Si el JWT contiene claims de SAML, extraerlos
-            // El JWT claims se pueden obtener del SecurityContext si se implementa un custom principal o details
-            // Alternativamente, si usas un filtro que parsea el JWT y pone los claims en details como Map
-            // Aquí intentamos extraer los claims del principal si es un Map
             if (authentication.getPrincipal() instanceof Map) {
                 Map<?, ?> claims = (Map<?, ?>) authentication.getPrincipal();
                 for (Map.Entry<?, ?> entry : claims.entrySet()) {
                     result.put(String.valueOf(entry.getKey()), entry.getValue());
                 }
             }
-            // Si los claims están en details como Map
             if (authentication.getDetails() instanceof Map) {
                 Map<?, ?> details = (Map<?, ?>) authentication.getDetails();
                 for (Map.Entry<?, ?> entry : details.entrySet()) {

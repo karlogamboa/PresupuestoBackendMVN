@@ -3,6 +3,7 @@ package com.cdc.fin.presupuesto.repository;
 import com.cdc.fin.presupuesto.model.ScimListResponse;
 import com.cdc.fin.presupuesto.model.ScimUser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -75,6 +76,19 @@ public class ScimUserRepository {
             item.put("active", AttributeValue.builder().bool(user.getActive() != null ? user.getActive() : true).build());
             if (user.getName() != null)
                 item.put("name", AttributeValue.builder().s(new ObjectMapper().writeValueAsString(user.getName())).build());
+            // Nuevos atributos SAML/enterprise
+            if (user.getEmails() != null && !user.getEmails().isEmpty())
+                item.put("email", AttributeValue.builder().s(user.getEmails().get(0).getValue()).build());
+            if (user.getName() != null && user.getName().getGivenName() != null)
+                item.put("given_name", AttributeValue.builder().s(user.getName().getGivenName()).build());
+            if (user.getName() != null && user.getName().getFamilyName() != null)
+                item.put("family_name", AttributeValue.builder().s(user.getName().getFamilyName()).build());
+            if (user.getEmployeeNumber() != null)
+                item.put("employee_number", AttributeValue.builder().s(user.getEmployeeNumber()).build());
+            if (user.getUserType() != null)
+                item.put("user_type", AttributeValue.builder().s(user.getUserType()).build());
+            if (user.getDepartment() != null)
+                item.put("department", AttributeValue.builder().s(user.getDepartment()).build());
             // ...otros campos relevantes...
 
             dynamoDbClient.putItem(PutItemRequest.builder()
@@ -105,6 +119,23 @@ public class ScimUserRepository {
             user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
             if (item.containsKey("name"))
                 user.setName(new ObjectMapper().readValue(item.get("name").s(), ScimUser.Name.class));
+            // Leer atributos SAML/enterprise
+            if (item.containsKey("email"))
+                user.setEmails(List.of(new ScimUser.Email(item.get("email").s(), true, "work")));
+            if (item.containsKey("given_name") || item.containsKey("family_name")) {
+                ScimUser.Name name = user.getName() != null ? user.getName() : new ScimUser.Name();
+                if (item.containsKey("given_name"))
+                    name.setGivenName(item.get("given_name").s());
+                if (item.containsKey("family_name"))
+                    name.setFamilyName(item.get("family_name").s());
+                user.setName(name);
+            }
+            if (item.containsKey("employee_number"))
+                user.setEmployeeNumber(item.get("employee_number").s());
+            if (item.containsKey("user_type"))
+                user.setUserType(item.get("user_type").s());
+            if (item.containsKey("department"))
+                user.setDepartment(item.get("department").s());
             ensureScimCompliance(user);
             return user;
         }
@@ -123,6 +154,19 @@ public class ScimUserRepository {
             item.put("active", AttributeValue.builder().bool(user.getActive() != null ? user.getActive() : true).build());
             if (user.getName() != null)
                 item.put("name", AttributeValue.builder().s(new ObjectMapper().writeValueAsString(user.getName())).build());
+            // Nuevos atributos SAML/enterprise
+            if (user.getEmails() != null && !user.getEmails().isEmpty())
+                item.put("email", AttributeValue.builder().s(user.getEmails().get(0).getValue()).build());
+            if (user.getName() != null && user.getName().getGivenName() != null)
+                item.put("given_name", AttributeValue.builder().s(user.getName().getGivenName()).build());
+            if (user.getName() != null && user.getName().getFamilyName() != null)
+                item.put("family_name", AttributeValue.builder().s(user.getName().getFamilyName()).build());
+            if (user.getEmployeeNumber() != null)
+                item.put("employee_number", AttributeValue.builder().s(user.getEmployeeNumber()).build());
+            if (user.getUserType() != null)
+                item.put("user_type", AttributeValue.builder().s(user.getUserType()).build());
+            if (user.getDepartment() != null)
+                item.put("department", AttributeValue.builder().s(user.getDepartment()).build());
             // ...otros campos relevantes...
 
             dynamoDbClient.putItem(PutItemRequest.builder()
@@ -142,6 +186,13 @@ public class ScimUserRepository {
             if (patch.getName() != null) user.setName(patch.getName());
             if (patch.getEmails() != null) user.setEmails(patch.getEmails());
             if (patch.getRoles() != null) user.setRoles(patch.getRoles());
+            // Campos faltantes SAML/enterprise
+            if (patch.getEmployeeNumber() != null) user.setEmployeeNumber(patch.getEmployeeNumber());
+            if (patch.getUserType() != null) user.setUserType(patch.getUserType());
+            if (patch.getDepartment() != null) user.setDepartment(patch.getDepartment());
+            if (patch.getEmail() != null) user.setEmail(patch.getEmail());
+            if (patch.getGiven_name() != null) user.setGiven_name(patch.getGiven_name());
+            if (patch.getFamily_name() != null) user.setFamily_name(patch.getFamily_name());
             ensureScimCompliance(user);
             return replaceUser(id, user);
         }
@@ -174,6 +225,29 @@ public class ScimUserRepository {
                 AttributeValue nameAttr = item.get("name");
                 if (nameAttr != null)
                     user.setName(mapper.readValue(nameAttr.s(), ScimUser.Name.class));
+                // Leer atributos SAML/enterprise
+                if (item.containsKey("email"))
+                    user.setEmails(List.of(new ScimUser.Email(item.get("email").s(), true, "work")));
+                if (item.containsKey("given_name") || item.containsKey("family_name")) {
+                    ScimUser.Name name = user.getName() != null ? user.getName() : new ScimUser.Name();
+                    if (item.containsKey("given_name"))
+                        name.setGivenName(item.get("given_name").s());
+                    if (item.containsKey("family_name"))
+                        name.setFamilyName(item.get("family_name").s());
+                    user.setName(name);
+                }
+                if (item.containsKey("employee_number"))
+                    user.setEmployeeNumber(item.get("employee_number").s());
+                if (item.containsKey("user_type"))
+                    user.setUserType(item.get("user_type").s());
+                if (item.containsKey("department"))
+                    user.setDepartment(item.get("department").s());
+                if (item.containsKey("email"))
+                    user.setEmail(item.get("email").s());
+                if (item.containsKey("given_name"))
+                    user.setGiven_name(item.get("given_name").s());
+                if (item.containsKey("family_name"))
+                    user.setFamily_name(item.get("family_name").s());
                 ensureScimCompliance(user);
                 filteredUsers.add(user);
             }
@@ -211,6 +285,29 @@ public class ScimUserRepository {
                     AttributeValue nameAttr = item.get("name");
                     if (nameAttr != null)
                         user.setName(mapper.readValue(nameAttr.s(), ScimUser.Name.class));
+                    // Leer atributos SAML/enterprise
+                    if (item.containsKey("email"))
+                        user.setEmails(List.of(new ScimUser.Email(item.get("email").s(), true, "work")));
+                    if (item.containsKey("given_name") || item.containsKey("family_name")) {
+                        ScimUser.Name name = user.getName() != null ? user.getName() : new ScimUser.Name();
+                        if (item.containsKey("given_name"))
+                            name.setGivenName(item.get("given_name").s());
+                        if (item.containsKey("family_name"))
+                            name.setFamilyName(item.get("family_name").s());
+                        user.setName(name);
+                    }
+                    if (item.containsKey("employee_number"))
+                        user.setEmployeeNumber(item.get("employee_number").s());
+                    if (item.containsKey("user_type"))
+                        user.setUserType(item.get("user_type").s());
+                    if (item.containsKey("department"))
+                        user.setDepartment(item.get("department").s());
+                    if (item.containsKey("email"))
+                        user.setEmail(item.get("email").s());
+                    if (item.containsKey("given_name"))
+                        user.setGiven_name(item.get("given_name").s());
+                    if (item.containsKey("family_name"))
+                        user.setFamily_name(item.get("family_name").s());
                     ensureScimCompliance(user);
                     userResources.add(user);
                 } catch (Exception e) {
@@ -243,5 +340,42 @@ public class ScimUserRepository {
         if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
             user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
         }
+    }
+
+    // Crear usuario (POST /Users)
+    public ScimUser createUserFromJson(String body) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(body);
+
+        ScimUser user = mapper.treeToValue(root, ScimUser.class);
+
+        JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+        if (enterpriseNode != null) {
+            if (enterpriseNode.has("employeeNumber")) {
+                user.setEmployeeNumber(enterpriseNode.get("employeeNumber").asText());
+            }
+            if (enterpriseNode.has("department")) {
+                user.setDepartment(enterpriseNode.get("department").asText());
+            }
+        }
+        return createUser(user);
+    }
+
+    public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(body);
+
+        ScimUser user = mapper.treeToValue(root, ScimUser.class);
+
+        JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+        if (enterpriseNode != null) {
+            if (enterpriseNode.has("employeeNumber")) {
+                user.setEmployeeNumber(enterpriseNode.get("employeeNumber").asText());
+            }
+            if (enterpriseNode.has("department")) {
+                user.setDepartment(enterpriseNode.get("department").asText());
+            }
+        }
+        return replaceUser(id, user);
     }
 }

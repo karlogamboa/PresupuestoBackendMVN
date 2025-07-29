@@ -2,10 +2,13 @@ package com.cdc.fin.presupuesto.service;
 
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.fin.presupuesto.repository.SolicitudPresupuestoRepository;
+import com.cdc.fin.presupuesto.util.UserAuthUtils;
+import com.cdc.fin.presupuesto.model.ScimUser;
+
 import org.springframework.stereotype.Service;
-import org.bouncycastle.jcajce.provider.asymmetric.dsa.DSASigner.stdDSA;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Instant;
@@ -20,12 +23,20 @@ public class SolicitudPresupuestoService {
     private final SolicitudPresupuestoRepository repository;
     private final EmailService emailService;
 
+    @Autowired
+    private final UserAuthUtils userAuthUtils;
+
     @Value("${presupuesto.solicitud.prefix:REQ-}")
     private String solicitudPrefix;
 
-    public SolicitudPresupuestoService(SolicitudPresupuestoRepository repository, EmailService emailService) {
+    public SolicitudPresupuestoService(
+        SolicitudPresupuestoRepository repository,
+        EmailService emailService,
+        UserAuthUtils userAuthUtils
+    ) {
         this.repository = repository;
         this.emailService = emailService;
+        this.userAuthUtils = userAuthUtils;
     }
     
     /**
@@ -50,15 +61,15 @@ public class SolicitudPresupuestoService {
     }
 
     public SolicitudPresupuesto create(SolicitudPresupuesto solicitud) {
-        // Obtener datos del usuario autenticado vía SAML/OKTA
-        // String userEmail = UserAuthUtils.getCurrentUserEmail();
-        // String userName = UserAuthUtils.getCurrentUserName();
-        // String numeroEmpleado = UserAuthUtils.getCurrentUserEmployeeNumber(); // Implementar si es necesario
-        // String departamento = UserAuthUtils.getCurrentUserDepartment(); // Implementar si es necesario
+        String emailActual = solicitud.getCorreo();
+        ScimUser scimUser = userAuthUtils.getScimUserByEmail(emailActual);
 
-        String userEmail ="";
+        String userEmail = scimUser != null ? scimUser.getEmail() : emailActual;
+        String userName = scimUser != null ? scimUser.getUserName() : null;
+        String numeroEmpleado = scimUser != null ? scimUser.getEmployeeNumber() : null;
+        String departamento = scimUser != null ? scimUser.getUserType() : null;
+
         String id = UUID.randomUUID().toString();
-        String userName = "defaultUser"; // Placeholder, implement actual retrieval
         String solicitudId = solicitudPrefix + System.currentTimeMillis();
         
         solicitud.setId(id);

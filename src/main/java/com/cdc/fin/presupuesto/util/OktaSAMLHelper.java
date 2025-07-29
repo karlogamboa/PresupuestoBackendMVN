@@ -19,8 +19,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OktaSAMLHelper {
+
+    private static final Logger logger = LoggerFactory.getLogger(OktaSAMLHelper.class);
 
     /**
      * Inicializa las librerías de OpenSAML. Es crucial llamar a este método
@@ -43,29 +47,28 @@ public class OktaSAMLHelper {
      * @throws Exception si ocurre un error al procesar la respuesta.
      */
     public static Map<String, List<String>> getUserAttributes(String samlResponseBase64) throws Exception {
-        // 1. Decodificar la respuesta Base64
+        logger.info("Decodificando SAMLResponse Base64...");
         byte[] samlResponseBytes = Base64.getDecoder().decode(samlResponseBase64);
         InputStream samlInputStream = new ByteArrayInputStream(samlResponseBytes);
 
-        // 2. Parsear el XML
+        logger.info("Parseando XML SAML...");
         DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
         documentBuilderFactory.setNamespaceAware(true);
         DocumentBuilder docBuilder = documentBuilderFactory.newDocumentBuilder();
         Document document = docBuilder.parse(samlInputStream);
         Element samlElement = document.getDocumentElement();
 
-        // 3. Deserializar (unmarshall) el XML a un objeto SAML Response
+        logger.info("Deserializando XML a objeto SAML Response...");
         UnmarshallerFactory unmarshallerFactory = org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
         Unmarshaller unmarshaller = unmarshallerFactory.getUnmarshaller(samlElement);
         Response samlResponse = (Response) unmarshaller.unmarshall(samlElement);
 
-        // 4. Obtener la primera aserción (Assertion)
         Assertion assertion = samlResponse.getAssertions().get(0);
         if (assertion == null) {
+            logger.error("La respuesta SAML no contiene ninguna aserción.");
             throw new IllegalArgumentException("La respuesta SAML no contiene ninguna aserción.");
         }
 
-        // 5. Extraer los atributos del AttributeStatement
         Map<String, List<String>> attributesMap = new HashMap<>();
         for (AttributeStatement attributeStatement : assertion.getAttributeStatements()) {
             for (Attribute attribute : attributeStatement.getAttributes()) {
@@ -73,15 +76,25 @@ public class OktaSAMLHelper {
                 List<String> values = attribute.getAttributeValues().stream()
                         .map(xmlObj -> xmlObj.getDOM().getTextContent())
                         .collect(Collectors.toList());
+                logger.info("Atributo SAML: {} = {}", name, values);
                 attributesMap.put(name, values);
             }
         }
         
         // Opcional: Extraer el NameID (identificador principal del usuario)
         String nameId = assertion.getSubject().getNameID().getValue();
+        logger.info("NameID extraído: {}", nameId);
         attributesMap.put("NameID", List.of(nameId));
 
+        // Extraer atributos específicos y asignarlos a variables
+        String email = attributesMap.getOrDefault("email", List.of("Unspecified")).get(0);
+        String givenName = attributesMap.getOrDefault("given_name", List.of("Unspecified")).get(0);
+        String familyName = attributesMap.getOrDefault("family_name", List.of("Unspecified")).get(0);
+        String employeeNumber = attributesMap.getOrDefault("employee_number", List.of("Unspecified")).get(0);
+        String userType = attributesMap.getOrDefault("user_type", List.of("Unspecified")).get(0);
 
+        logger.info("Email: {}, Nombre: {}, Apellido: {}, Número de empleado: {}, Tipo de usuario: {}",
+            email, givenName, familyName, employeeNumber, userType);
         return attributesMap;
     }
 
@@ -93,12 +106,12 @@ public class OktaSAMLHelper {
         initializeSAML();
         try {
             Map<String, List<String>> userAttributes = getUserAttributes(samlResponseFromOkta);
-            System.out.println("Atributos del usuario obtenidos de Okta:");
+            logger.debug("Atributos del usuario obtenidos de Okta:");
             userAttributes.forEach((key, value) ->
-                System.out.println(String.format("  - %s: %s", key, String.join(", ", value)))
+                logger.debug("  - {}: {}", key, String.join(", ", value))
             );
         } catch (Exception e) {
-            System.err.println("Error procesando la respuesta SAML: " + e.getMessage());
+            logger.error("Error procesando la respuesta SAML: {}", e.getMessage(), e);
             // En un entorno real, aquí deberías manejar el error apropiadamente (ej. redirigir a una página de error).
         }
     }
