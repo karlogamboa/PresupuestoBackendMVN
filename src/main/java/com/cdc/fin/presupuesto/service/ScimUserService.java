@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import com.cdc.fin.presupuesto.repository.ScimUserRepository;
 import com.cdc.fin.presupuesto.model.ScimUser;
 import com.cdc.fin.presupuesto.model.ScimListResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Service
 public class ScimUserService {
@@ -14,22 +15,22 @@ public class ScimUserService {
     }
 
     // Crea usuario y retorna el objeto ScimUser
-    public ScimUser createUser(ScimUser user) {
+    public ScimUser createUser(ScimUser user) throws JsonProcessingException {
         return userRepository.createUser(user);
     }
 
     // Obtiene usuario por id
-    public ScimUser getUser(String id) {
+    public ScimUser getUser(String id) throws JsonProcessingException {
         return userRepository.getUser(id);
     }
 
     // Reemplaza usuario y retorna el objeto ScimUser
-    public ScimUser replaceUser(String id, ScimUser user) {
+    public ScimUser replaceUser(String id, ScimUser user) throws JsonProcessingException {
         return userRepository.replaceUser(id, user);
     }
 
     // Aplica patch y retorna el objeto ScimUser
-    public ScimUser patchUser(String id, ScimUser patch) {
+    public ScimUser patchUser(String id, ScimUser patch) throws JsonProcessingException {
         return userRepository.patchUser(id, patch);
     }
 
@@ -39,7 +40,7 @@ public class ScimUserService {
     }
 
     // Lista usuarios y retorna ScimListResponse, acepta filtro
-    public ScimListResponse<ScimUser> listUsers(String filter) {
+    public ScimListResponse<ScimUser> listUsers(String filter) throws JsonProcessingException {
         return userRepository.listUsers(filter);
     }
 }

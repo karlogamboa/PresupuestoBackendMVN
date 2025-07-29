@@ -1,6 +1,7 @@
 package com.cdc.fin.presupuesto.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.*;
@@ -8,9 +9,10 @@ import software.amazon.awssdk.services.ses.model.*;
 @Service
 public class EmailService {
 
-    private static final String CHARSET_UTF8 = "UTF-8";
-
     private final SesClient sesClient;
+
+    @Value("${email.charset:UTF-8}")
+    private String charsetUtf8;
 
     @Autowired
     public EmailService(SesClient sesClient) {
@@ -26,8 +28,8 @@ public class EmailService {
                 .source(from)
                 .destination(d -> d.toAddresses(to))
                 .message(m -> m
-                    .subject(s -> s.data(subject).charset(CHARSET_UTF8))
-                    .body(b -> b.text(tb -> tb.data(body).charset(CHARSET_UTF8)))
+                    .subject(s -> s.data(subject).charset(charsetUtf8))
+                    .body(b -> b.text(tb -> tb.data(body).charset(charsetUtf8)))
                 )
                 .build()
         );
@@ -40,10 +42,10 @@ public class EmailService {
                 .source(from)
                 .destination(d -> d.toAddresses(to))
                 .message(m -> m
-                    .subject(s -> s.data(subject).charset(CHARSET_UTF8))
+                    .subject(s -> s.data(subject).charset(charsetUtf8))
                     .body(b -> {
-                        b.html(h -> h.data(htmlBody).charset(CHARSET_UTF8));
-                        b.text(t -> t.data(textBody != null ? textBody : "").charset(CHARSET_UTF8));
+                        b.html(h -> h.data(htmlBody).charset(charsetUtf8));
+                        b.text(t -> t.data(textBody != null ? textBody : "").charset(charsetUtf8));
                     })
                 )
                 .build();

@@ -7,17 +7,17 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttri
 @DynamoDbBean
 public class Proveedor {
     
-    private String id = "";
-    private String nombre = "";
-    private String duplicado = "";
-    private String categoria = "";
-    private String subsidiariaPrincipal = "";
-    private String contactoPrincipal = "";
-    private String telefono = "";
-    private String correoElectronico = "";
-    private String accesoInicioSesion = "";
-    private String numeroProveedor = "";
-    private String cuentasGastos = "";
+    private String id;
+    private String nombre;
+    private String duplicado;
+    private String categoria;
+    private String subsidiariaPrincipal;
+    private String contactoPrincipal;
+    private String telefono;
+    private String correoElectronico;
+    private String accesoInicioSesion;
+    private String numeroProveedor;
+    private String cuentasGastos;
 
     public Proveedor() {}
 

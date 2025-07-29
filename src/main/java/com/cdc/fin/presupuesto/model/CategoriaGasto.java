@@ -7,12 +7,12 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttri
 @DynamoDbBean
 public class CategoriaGasto {
     
-    private String id = "";
-    private String nombre = "";
-    private String descripcion = "";
-    private String cuentaDeGastos = "";
-    private String cuenta = "";
-    private double saldo = 0.0;
+    private String id;
+    private String nombre;
+    private String descripcion;
+    private String cuentaDeGastos;
+    private String cuenta;
+    private double saldo;
 
     public CategoriaGasto() {}
 

@@ -158,11 +158,8 @@ Este sistema está diseñado específicamente para AWS Lambda con las siguientes
 El sistema soporta los siguientes endpoints relacionados con autenticación y sesión:
 
 - `POST /api/userInfo` - Obtiene la información del usuario actualmente autenticado.
-- `POST /api/logout` - Invalida la sesión del usuario.
+- `POST /login` - Invalida la sesión del usuario.
 
-> **Nota:**
-> - En la arquitectura actual, `/api/userInfo` y `/api/logout` están implementados y gestionan la sesión del usuario autenticado a través de SAML2 (Spring Security).
-> - Los endpoints `/auth/login` y `/auth/callback` ya no existen en el backend (el login es responsabilidad del flujo SAML2).
 
 
 ---
@@ -222,3 +219,5 @@ El backend expone endpoints compatibles con SCIM 2.0 para integración con Okta 
 > **Importante:** El atributo `"id"` debe estar presente en todos los objetos usuario SCIM para que Okta pueda aprovisionar correctamente.
 
 - **Stage:** La propiedad `stage` se define en cada archivo de configuración por ambiente (`application.properties`, `application-qa.properties`, `application-prod.properties`) y se utiliza en el backend para rutas y redirecciones dinámicas.
+
+> **Nota:** Para SAML2, asegúrate que la configuración de CORS permita credenciales (`allowCredentials=true`) y que el navegador envíe las cookies de sesión en las solicitudes a endpoints protegidos. Spring Security procesa automáticamente las cookies de sesión si la política de sesión lo permite.

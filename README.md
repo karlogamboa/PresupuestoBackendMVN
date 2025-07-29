@@ -121,19 +121,27 @@ El sistema está diseñado para integrarse con AWS, utilizando servicios como Dy
 
 ## Seguridad
 
-### Autenticación via API Gateway y SCIM
-- Headers de usuario válidos requeridos para todas las operaciones
-- Endpoints `/scim/v2/**` protegidos para Okta provisioning (por ejemplo, Basic Auth)
-- Verificación de roles para operaciones administrativas via `x-user-roles`
+- El backend acepta y procesa cookies de sesión SAML si la sesión está habilitada (`SessionCreationPolicy.IF_REQUIRED`).
+- Asegúrate que el navegador envíe las cookies en las solicitudes a endpoints protegidos.
+- La configuración de CORS permite credenciales (`allowCredentials=true`) y todos los headers/métodos necesarios.
+- Los endpoints protegidos requieren autenticación y validan los permisos del usuario.
+- Los headers de autenticación y usuario deben estar presentes y correctos en las solicitudes.
 
-### Autorización
-- **Admin**: Acceso completo a gestión y cambio de estatus
-- **User**: Acceso a crear solicitudes y ver propias solicitudes
+---
 
-### Validaciones
-- Validación de roles válidos
-- Sanitización de datos de entrada
-- Headers de contexto de usuario desde API Gateway
+## Verificación de Cookies de Sesión SAML y Headers
+
+El backend está configurado para aceptar y procesar cookies de sesión SAML.  
+Asegúrate de que el navegador envíe las cookies en las solicitudes a endpoints protegidos (`/api/**`, `/saml/user`, etc).
+
+- **CORS:** La configuración permite credenciales y todos los headers/métodos necesarios.
+- **Autenticación:** Los endpoints protegidos requieren que el usuario esté autenticado (cookie de sesión SAML válida).
+- **Permisos:** El backend valida los roles del usuario antes de permitir acceso a endpoints protegidos.
+- **Headers:** Los headers de autenticación y usuario (`Authorization`, `x-user-id`, `x-user-roles`, etc) deben estar presentes y correctos en las solicitudes.
+
+Para debug, revisa los logs del backend para confirmar que las cookies de sesión SAML y los headers se reciben correctamente.
+
+---
 
 ## Instalación y Ejecución
 
@@ -141,6 +149,19 @@ El sistema está diseñado para integrarse con AWS, utilizando servicios como Dy
 - Java 11 o superior
 - Maven
 - AWS CLI configurado
+
+> **Nota de solución de problemas:**  
+> Si ves el error de compilación `package javax.servlet.http does not exist`, asegúrate de que tu proyecto incluya la dependencia de `javax.servlet-api` en el archivo `pom.xml`.  
+> Ejemplo de dependencia Maven:
+> ```xml
+> <dependency>
+>   <groupId>javax.servlet</groupId>
+>   <artifactId>javax.servlet-api</artifactId>
+>   <version>4.0.1</version>
+>   <scope>provided</scope>
+> </dependency>
+> ```
+> Si usas Spring Boot, normalmente esta dependencia ya está incluida, pero si usas un entorno diferente o excluiste dependencias, agrégala manualmente.
 
 ### Pasos de Instalación
 1. **Clonar el repositorio**
@@ -371,3 +392,37 @@ curl -X POST "https://v9hhsb7ju3.execute-api.us-east-2.amazonaws.com/qa/scim/v2/
     "active": true
   }'
 ```
+
+## Arquitectura Serverless y SAML2
+
+Este backend está diseñado para ejecutarse en AWS Lambda detrás de API Gateway, usando DynamoDB y SES, y autenticación SAML2 con Okta.
+
+- **Patrón Lambda/API Gateway:**  
+  - Todas las rutas HTTP son gestionadas por API Gateway y delegadas a Lambda.
+  - El backend es stateless, optimizado para cold start y escalabilidad.
+  - La configuración sensible (secrets, endpoints, certificados) se obtiene de AWS Parameter Store o Secrets Manager.
+
+- **Integración SAML2 con Okta:**  
+  - El flujo SAML2 inicia en Okta y regresa al endpoint ACS en Lambda/API Gateway.
+  - El ACS (`/login/saml2/sso/okta-saml`) valida la respuesta SAML y genera un JWT para el frontend.
+  - El Audience Restriction (SP Entity ID) en Okta debe ser igual al ACS URL configurado en el backend.
+  - El backend expone `/saml/user` para obtener atributos SAML del usuario autenticado.
+
+- **DynamoDB:**  
+  - Todas las entidades principales usan DynamoDB con prefijos por ambiente.
+  - Los índices secundarios permiten búsquedas eficientes (por ejemplo, por número de empleado).
+
+- **SCIM y Okta:**  
+  - Endpoints SCIM para aprovisionamiento de usuarios y grupos desde Okta.
+  - Token SCIM configurable por ambiente.
+
+- **CORS y Seguridad:**  
+  - CORS configurado para permitir solo los orígenes necesarios (frontend y Okta).
+  - Cookies de sesión SAML y JWT son aceptadas y procesadas por Lambda.
+
+## Flujo SAML2 Serverless
+
+1. El usuario inicia sesión en Okta y es redirigido al ACS en API Gateway/Lambda.
+2. Lambda procesa la respuesta SAML, valida el Audience y genera un JWT.
+3. El usuario es redirigido al frontend con el JWT como parámetro o cookie.
+4. El backend valida el JWT en cada petición protegida.

@@ -6,23 +6,15 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import com.onelogin.saml2.Auth;
 
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
-import java.util.List;
-import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
-import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
-import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.opensaml.core.config.InitializationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.opensaml.saml.saml2.core.Response;
-import org.opensaml.xmlsec.signature.support.SignatureException;
-import java.util.Base64;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
 import org.w3c.dom.Document;
@@ -30,39 +22,20 @@ import org.w3c.dom.Element;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.core.xml.io.Unmarshaller;
 import org.opensaml.core.xml.io.UnmarshallerFactory;
-import org.opensaml.core.xml.io.UnmarshallingException;
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
 
 public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(AcsHandler.class);
 
-    // Lee secretos desde AWS Secrets Manager
-    private static final Map<String, String> secrets = getSecrets();
-    private static final String JWT_SECRET = secrets.getOrDefault("JWT_SECRET_KEY", "default_secret");
-    private static final String FRONTEND_URL = secrets.getOrDefault("FRONTEND_URL", "https://d38gv65skwp3eh.cloudfront.net");
+    @Value("${cors.allowed.origins:https://d38gv65skwp3eh.cloudfront.net,https://trial-4567848.okta.com}")
+    private String corsAllowedOrigins;
 
-    private static Map<String, String> getSecrets() {
-        try (SecretsManagerClient client = SecretsManagerClient.builder().build()) {
-            GetSecretValueRequest getSecretValueRequest = GetSecretValueRequest.builder()
-                    .secretId("presupuesto-backend-secrets") // Cambia por el nombre real del secreto
-                    .build();
-            GetSecretValueResponse getSecretValueResponse = client.getSecretValue(getSecretValueRequest);
-            String secretString = getSecretValueResponse.secretString();
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(secretString, HashMap.class);
-        } catch (Exception e) {
-            return new HashMap<>();
-        }
-    }
-
-    static {
-        try {
-            InitializationService.initialize();
-        } catch (Exception e) {
-            throw new RuntimeException("OpenSAML initialization failed", e);
-        }
-    }
+    @Value("${jwt.secret:supersecretkey123}")
+    private String jwtSecret;
+    
+    @Value("${frontend.redirect-url:https://d38gv65skwp3eh.cloudfront.net}")
+    private String frontEndUrl;
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
@@ -74,12 +47,12 @@ public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
                 return new APIGatewayProxyResponseEvent().withStatusCode(400).withBody("Error: SAMLResponse vacío.");
             }
 
-            // Procesa el SAMLResponse con OpenSAML
+            // Procesa SAMLResponse, genera JWT y redirige al frontend
             Response samlResponse = decodeAndParseSamlResponse(samlResponseBase64);
             String nameId = extractNameId(samlResponse);
 
             // ...JWT y redirección igual que antes...
-            Algorithm algorithm = Algorithm.HMAC256(JWT_SECRET);
+            Algorithm algorithm = Algorithm.HMAC256(jwtSecret);
             String token = JWT.create()
                 .withSubject(nameId)
                 .withClaim("email", nameId)
@@ -87,12 +60,19 @@ public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
                 .withExpiresAt(Date.from(Instant.now().plusSeconds(3600)))
                 .sign(algorithm);
 
-            String redirectUrl = FRONTEND_URL + "?token=" + token;
-            logger.info("Redirecting to frontend: {}", FRONTEND_URL);
+            String redirectUrl = frontEndUrl + "?token=" + token;
+            logger.info("Redirecting to frontend: {}", frontEndUrl);
+
+            // Set cookie header for JWT token
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Location", redirectUrl);
+            headers.put("Access-Control-Allow-Origin", corsAllowedOrigins);
+            headers.put("Access-Control-Allow-Credentials", "true");
+            headers.put("Set-Cookie", "SESSION=" + token + "; Path=/; HttpOnly; Secure; SameSite=None");
 
             return new APIGatewayProxyResponseEvent()
-                    .withStatusCode(302)
-                    .withHeaders(Map.of("Location", redirectUrl));
+                .withStatusCode(302)
+                .withHeaders(headers);
 
         } catch (Exception e) {
             logger.error("Error al procesar la respuesta SAML: {}", e.getMessage(), e);

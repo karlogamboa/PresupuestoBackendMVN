@@ -2,6 +2,7 @@ package com.cdc.fin.presupuesto.repository;
 
 import com.cdc.fin.presupuesto.model.ScimListResponse;
 import com.cdc.fin.presupuesto.model.ScimUser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Repository
 public class ScimUserRepository {
@@ -27,23 +27,21 @@ public class ScimUserRepository {
     @Value("${aws.dynamodb.table.scim-users:}")
     private String usersTable;
 
-    public ScimUser createUser(ScimUser user) {
+    // Crear usuario (POST /Users)
+    public ScimUser createUser(ScimUser user) throws JsonProcessingException {
         String id = java.util.UUID.randomUUID().toString();
         user.setId(id);
-        if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
-            user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
-        }
-        String userJson;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            userJson = mapper.writeValueAsString(user);
-        } catch (Exception e) {
-            throw new RuntimeException("Error serializando usuario", e);
-        }
+        ensureScimCompliance(user);
+
         if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("id", AttributeValue.builder().s(id).build());
-            item.put("userJson", AttributeValue.builder().s(userJson).build());
+            item.put("userName", AttributeValue.builder().s(user.getUserName()).build());
+            item.put("active", AttributeValue.builder().bool(user.getActive() != null ? user.getActive() : true).build());
+            if (user.getName() != null)
+                item.put("name", AttributeValue.builder().s(new ObjectMapper().writeValueAsString(user.getName())).build());
+            // ...otros campos relevantes...
+
             dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(usersTable)
                 .item(item)
@@ -52,15 +50,11 @@ public class ScimUserRepository {
         return user;
     }
 
-    /**
-     * Obtiene un solo usuario y lo devuelve como un objeto ScimUser.
-     * La serialización a JSON la hará el controlador.
-     */
-    public ScimUser getUser(String id) {
+    // Leer usuario por ID (GET /Users/{id})
+    public ScimUser getUser(String id) throws JsonProcessingException {
         if (dynamoDbClient == null || usersTable == null || usersTable.isEmpty()) {
             return null;
         }
-
         Map<String, AttributeValue> key = new HashMap<>();
         key.put("id", AttributeValue.builder().s(id).build());
         var result = dynamoDbClient.getItem(GetItemRequest.builder()
@@ -68,46 +62,34 @@ public class ScimUserRepository {
                 .key(key)
                 .build());
 
-        if (result.hasItem() && result.item().containsKey("userJson")) {
-            String userJson = result.item().get("userJson").s();
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                ScimUser user = mapper.readValue(userJson, ScimUser.class);
-
-                // La fuente de verdad para el ID es la clave primaria de DynamoDB.
-                user.setId(id);
-
-                // Asegura que el campo "schemas" esté presente.
-                if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
-                    user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
-                }
-                return user;
-            } catch (Exception e) {
-                // ¡NUNCA ignores los errores! Esto te mostrará qué está fallando.
-                System.err.println("Error al deserializar el usuario con ID: " + id);
-                e.printStackTrace();
-                return null;
-            }
+        if (result.hasItem()) {
+            Map<String, AttributeValue> item = result.item();
+            ScimUser user = new ScimUser();
+            user.setId(item.get("id").s());
+            user.setUserName(item.get("userName").s());
+            user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
+            if (item.containsKey("name"))
+                user.setName(new ObjectMapper().readValue(item.get("name").s(), ScimUser.Name.class));
+            ensureScimCompliance(user);
+            return user;
         }
         return null;
     }
 
-    public ScimUser replaceUser(String id, ScimUser user) {
+    // Actualizar usuario (PUT /Users/{id})
+    public ScimUser replaceUser(String id, ScimUser user) throws JsonProcessingException {
         user.setId(id);
-        if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
-            user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
-        }
-        String userJson;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            userJson = mapper.writeValueAsString(user);
-        } catch (Exception e) {
-            throw new RuntimeException("Error serializando usuario", e);
-        }
+        ensureScimCompliance(user);
+
         if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
             Map<String, AttributeValue> item = new HashMap<>();
             item.put("id", AttributeValue.builder().s(id).build());
-            item.put("userJson", AttributeValue.builder().s(userJson).build());
+            item.put("userName", AttributeValue.builder().s(user.getUserName()).build());
+            item.put("active", AttributeValue.builder().bool(user.getActive() != null ? user.getActive() : true).build());
+            if (user.getName() != null)
+                item.put("name", AttributeValue.builder().s(new ObjectMapper().writeValueAsString(user.getName())).build());
+            // ...otros campos relevantes...
+
             dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(usersTable)
                 .item(item)
@@ -116,10 +98,10 @@ public class ScimUserRepository {
         return user;
     }
 
-    public ScimUser patchUser(String id, ScimUser patch) {
+    // Desactivar/reactivar usuario (PATCH /Users/{id})
+    public ScimUser patchUser(String id, ScimUser patch) throws JsonProcessingException {
         ScimUser user = getUser(id);
         if (user != null) {
-            // Aplica solo los cambios del patch (ejemplo: active, userName, emails, roles)
             if (patch.getActive() != null) user.setActive(patch.getActive());
             if (patch.getUserName() != null) user.setUserName(patch.getUserName());
             if (patch.getName() != null) user.setName(patch.getName());
@@ -131,112 +113,35 @@ public class ScimUserRepository {
         return null;
     }
 
-    public void deleteUser(String id) {
-        if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
-            Map<String, AttributeValue> key = new HashMap<>();
-            key.put("id", AttributeValue.builder().s(id).build());
-            dynamoDbClient.deleteItem(DeleteItemRequest.builder()
-                    .tableName(usersTable)
-                    .key(key)
-                    .build());
-        }
-    }
-
-    /**
-     * Devuelve un objeto ScimListResponse que contiene la lista de usuarios.
-     * El framework se encargará de convertir esto a JSON.
-     */
-    public ScimListResponse<ScimUser> listUsers() {
-        List<ScimUser> userResources = new ArrayList<>();
-
-        if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
-            ScanRequest scanRequest = ScanRequest.builder().tableName(usersTable).build();
-            ScanResponse scanResponse = dynamoDbClient.scan(scanRequest);
-            ObjectMapper mapper = new ObjectMapper();
-
-            for (Map<String, AttributeValue> item : scanResponse.items()) {
-                if (item.containsKey("userJson") && item.containsKey("id")) {
-                    String userJson = item.get("userJson").s();
-                    String userId = item.get("id").s();
-                    try {
-                        ScimUser user = mapper.readValue(userJson, ScimUser.class);
-
-                        // Asigna explícitamente el ID desde la clave de DynamoDB
-                        user.setId(userId);
-
-                        // Asegura que el campo "schemas" esté presente
-                        if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
-                           user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
-                        }
-                        userResources.add(user);
-
-                    } catch (Exception e) {
-                        // Loguea el error para poder depurarlo
-                        System.err.println("Error procesando el registro de usuario: " + userJson);
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        // Construye el objeto de respuesta final
-        ScimListResponse<ScimUser> response = new ScimListResponse<ScimUser>();
-        response.setTotalResults(userResources.size());
-        response.setItemsPerPage(userResources.size());
-        response.setStartIndex(1);
-        response.setResources(userResources); // Asumiendo que ScimListResponse tiene un campo List<ScimUser> Resources
-
-        return response;
-    }
-
-    /**
-     * Lista usuarios. Si se provee un filtro por 'userName', busca un usuario específico
-     * realizando el filtrado en la aplicación después de leer de la BD.
-     */
-    public ScimListResponse<ScimUser> listUsers(String filter) {
-        System.out.println("SCIM listUsers - Filtro recibido: " + filter);
-
-        List<ScimUser> allUsers = new ArrayList<>();
-
-        if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
-            ScanRequest scanRequest = ScanRequest.builder().tableName(usersTable).build();
-            ScanResponse scanResponse = dynamoDbClient.scan(scanRequest);
-            ObjectMapper mapper = new ObjectMapper();
-
-            for (Map<String, AttributeValue> item : scanResponse.items()) {
-                if (item.containsKey("userJson") && item.containsKey("id")) {
-                    String userJson = item.get("userJson").s();
-                    String userId = item.get("id").s();
-                    try {
-                        ScimUser user = mapper.readValue(userJson, ScimUser.class);
-                        user.setId(userId);
-                        ensureScimCompliance(user);
-                        allUsers.add(user);
-                    } catch (Exception e) {
-                        System.err.println("Error procesando el registro de usuario: " + userJson);
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        List<ScimUser> filteredUsers;
+    // Buscar usuarios por userName (GET /Users?filter=userName eq "...")
+    public ScimListResponse<ScimUser> listUsers(String filter) throws JsonProcessingException {
         Pattern USER_NAME_FILTER_PATTERN = Pattern.compile("userName\\s+eq\\s+\"([^\"]+)\"");
         Matcher matcher = (filter != null) ? USER_NAME_FILTER_PATTERN.matcher(filter) : null;
 
+        List<ScimUser> filteredUsers = new ArrayList<>();
         if (matcher != null && matcher.find()) {
             String userNameToFilter = matcher.group(1);
-            System.out.println("SCIM listUsers - Buscando userName: '" + userNameToFilter + "'");
-            filteredUsers = allUsers.stream()
-                    .filter(user -> user.getUserName() != null && user.getUserName().equals(userNameToFilter))
-                    .collect(Collectors.toList());
-            System.out.println("SCIM listUsers - Usuarios encontrados después del filtro: " + filteredUsers.size());
-            for (ScimUser u : filteredUsers) {
-                System.out.println("SCIM listUsers - Usuario encontrado: id=" + u.getId() + ", userName=" + u.getUserName());
+            QueryRequest queryRequest = QueryRequest.builder()
+                .tableName(usersTable)
+                .indexName("UserNameIndex") // Debes crear este GSI en DynamoDB
+                .keyConditionExpression("userName = :v_user")
+                .expressionAttributeValues(Map.of(":v_user", AttributeValue.builder().s(userNameToFilter).build()))
+                .build();
+            QueryResponse response = dynamoDbClient.query(queryRequest);
+            ObjectMapper mapper = new ObjectMapper();
+            for (Map<String, AttributeValue> item : response.items()) {
+                ScimUser user = new ScimUser();
+                user.setId(item.get("id").s());
+                user.setUserName(item.get("userName").s());
+                user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
+                if (item.containsKey("name"))
+                    user.setName(mapper.readValue(item.get("name").s(), ScimUser.Name.class));
+                ensureScimCompliance(user);
+                filteredUsers.add(user);
             }
         } else {
-            System.out.println("SCIM listUsers - No se encontró un filtro de userName válido, devolviendo todos los usuarios.");
-            filteredUsers = allUsers;
+            // Si no hay filtro, puedes hacer un scan y devolver todos los usuarios
+            filteredUsers = listUsers().getResources();
         }
 
         ScimListResponse<ScimUser> response = new ScimListResponse<>();
@@ -248,9 +153,54 @@ public class ScimUserRepository {
         return response;
     }
 
+    // Listar todos los usuarios (GET /Users)
+    public ScimListResponse<ScimUser> listUsers() {
+        List<ScimUser> userResources = new ArrayList<>();
+
+        if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
+            ScanRequest scanRequest = ScanRequest.builder().tableName(usersTable).build();
+            ScanResponse scanResponse = dynamoDbClient.scan(scanRequest);
+            ObjectMapper mapper = new ObjectMapper();
+
+            for (Map<String, AttributeValue> item : scanResponse.items()) {
+                try {
+                    ScimUser user = new ScimUser();
+                    user.setId(item.get("id").s());
+                    user.setUserName(item.get("userName").s());
+                    user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
+                    if (item.containsKey("name"))
+                        user.setName(mapper.readValue(item.get("name").s(), ScimUser.Name.class));
+                    ensureScimCompliance(user);
+                    userResources.add(user);
+                } catch (Exception e) {
+                    System.err.println("Error procesando el registro de usuario: " + item);
+                    e.printStackTrace();
+                }
+            }
+        }
+        ScimListResponse<ScimUser> response = new ScimListResponse<>();
+        response.setTotalResults(userResources.size());
+        response.setItemsPerPage(userResources.size());
+        response.setStartIndex(1);
+        response.setResources(userResources);
+        return response;
+    }
+
+    // Eliminar usuario por ID (DELETE /Users/{id})
+    public void deleteUser(String id) {
+        if (dynamoDbClient != null && usersTable != null && !usersTable.isEmpty()) {
+            Map<String, AttributeValue> key = new HashMap<>();
+            key.put("id", AttributeValue.builder().s(id).build());
+            dynamoDbClient.deleteItem(DeleteItemRequest.builder()
+                .tableName(usersTable)
+                .key(key)
+                .build());
+        }
+    }
+
     private void ensureScimCompliance(ScimUser user) {
         if (user.getSchemas() == null || user.getSchemas().isEmpty()) {
-           user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
+            user.setSchemas(Collections.singletonList("urn:ietf:params:scim:schemas:core:2.0:User"));
         }
     }
 }

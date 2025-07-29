@@ -4,12 +4,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility class to extract user information from Spring Security (SAML2)
  * AWS Lambda + API Gateway + SAML2 (sin API Gateway Authorizer)
  */
 public class UserAuthUtils {
+    private static final Logger logger = LoggerFactory.getLogger(UserAuthUtils.class);
 
     /**
      * Get the current authenticated user ID (username)
@@ -23,6 +26,9 @@ public class UserAuthUtils {
         }
 
         Object principal = authentication.getPrincipal();
+        if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
+        }
         if (principal instanceof UserDetails userDetails) {
             return userDetails.getUsername();
         }
@@ -41,6 +47,7 @@ public class UserAuthUtils {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
             // Okta SAML Attribute: email
             return samlPrincipal.getFirstAttribute("email");
         }
@@ -62,6 +69,7 @@ public class UserAuthUtils {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
             // Okta SAML Attribute: given_name
             return samlPrincipal.getFirstAttribute("given_name");
         }
@@ -78,6 +86,7 @@ public class UserAuthUtils {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
             // Okta SAML Attribute: family_name
             return samlPrincipal.getFirstAttribute("family_name");
         }
@@ -94,6 +103,7 @@ public class UserAuthUtils {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
             // Okta SAML Group Attribute: roles
             java.util.List<String> roles = samlPrincipal.getAttribute("roles");
             return roles != null ? roles : java.util.Collections.emptyList();
@@ -125,7 +135,9 @@ public class UserAuthUtils {
      */
     public static boolean isAuthenticated() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.isAuthenticated();
+        boolean result = authentication != null && authentication.isAuthenticated();
+        logger.info("isAuthenticated: {}", result);
+        return result;
     }
 
     /**
@@ -135,15 +147,16 @@ public class UserAuthUtils {
      */
     public static boolean hasRole(String role) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
         if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("hasRole: usuario no autenticado");
             return false;
         }
-
-        return authentication.getAuthorities().stream()
+        boolean hasRole = authentication.getAuthorities().stream()
                 .anyMatch(authority ->
                     authority.getAuthority().equals("ROLE_" + role.toUpperCase()) ||
                     authority.getAuthority().equals(role.toUpperCase()));
+        logger.info("hasRole({}): {}", role, hasRole);
+        return hasRole;
     }
 
     /**
@@ -161,6 +174,7 @@ public class UserAuthUtils {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
             // Okta SAML Attribute: employee_Number
             return samlPrincipal.getFirstAttribute("employee_Number");
         }
@@ -176,10 +190,20 @@ public class UserAuthUtils {
             return null;
         }
         Object principal = authentication.getPrincipal();
-        // if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
-        //     return samlPrincipal.getFirstAttribute("department");
-        // }
+        if (principal instanceof Saml2AuthenticatedPrincipal samlPrincipal) {
+            logger.info("SAML principal attributes: {}", samlPrincipal.getAttributes());
+            return samlPrincipal.getFirstAttribute("department");
+        }
         return null;
     }
+
+    // Método para verificar si la cookie de sesión SAML está presente (solo para debug/logging)
+    // El método original requería javax.servlet.http, que puede no estar disponible en todos los entornos.
+    // Si necesitas esta funcionalidad, implementa en un controlador donde tengas acceso a HttpServletRequest.
+    public static void logSessionCookie(Object request) {
+        logger.warn("logSessionCookie: javax.servlet.http.HttpServletRequest no disponible en el entorno actual. Implementa este método en un controlador si es necesario.");
+    }
+
+    // Métodos para obtener atributos del usuario autenticado vía SAML2
 }
 // Todo correcto: utilidades para usuario autenticado.

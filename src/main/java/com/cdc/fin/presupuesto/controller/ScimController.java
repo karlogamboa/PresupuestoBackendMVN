@@ -7,21 +7,15 @@ import com.cdc.fin.presupuesto.service.ScimUserService;
 import com.cdc.fin.presupuesto.service.ScimGroupService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import jakarta.annotation.PostConstruct;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import com.cdc.fin.presupuesto.model.ScimUser;
 import com.cdc.fin.presupuesto.model.ScimListResponse;
 import com.cdc.fin.presupuesto.model.ScimGroup;
 import org.springframework.http.MediaType;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @RestController
 @RequestMapping("/scim/v2")
@@ -40,15 +34,14 @@ public class ScimController {
     @Value("${scim.token:scim-2025-qa-BEARER-2f8c1e7a4b7d4e8c9a1f6b3c2d5e7f8a}")
     private String scimToken;
 
-    /**
-     * Valida el token Bearer SCIM en el header Authorization
-     */
     private boolean isScimAuthorized(String authHeader) {
+        // Valida el token Bearer SCIM
         if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
         String token = authHeader.substring(7);
         return scimToken.equals(token);
     }
 
+    // Endpoints SCIM para Users y Groups
     // SCIM root endpoint (for Okta discovery)
     @GetMapping
     public ResponseEntity<String> scimRoot() {
@@ -57,7 +50,9 @@ public class ScimController {
     }
 
     // --- Users endpoints ---
-    // GET /scim/v2/Users/{id} - Retrieve user by id (SCIM standard)
+    /**
+     * Leer usuario por ID (GET /Users/{id}) - SCIM
+     */
     @GetMapping("/Users/{id}")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimUser> getUser(
@@ -77,7 +72,9 @@ public class ScimController {
         }
     }
 
-    // POST /scim/v2/Users - Create user (SCIM standard)
+    /**
+     * Crear usuario (POST /Users) - SCIM
+     */
     @PostMapping("/Users")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimUser> createUser(
@@ -95,6 +92,9 @@ public class ScimController {
     }
 
 
+    /**
+     * Buscar usuarios por userName (GET /Users?filter=...) - SCIM
+     */
     @GetMapping(value = "/Users", produces = "application/scim+json")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimListResponse<ScimUser>> listUsers(
@@ -102,13 +102,16 @@ public class ScimController {
         @RequestParam(defaultValue = "1") int startIndex,
         @RequestParam(defaultValue = "100") int count,
         @RequestParam(required = false) String sortBy
-    ) {
+    ) throws JsonProcessingException {
         ScimListResponse<ScimUser> responseBody = scimUserService.listUsers(filter);
         return ResponseEntity.ok()
             .contentType(new MediaType("application", "scim+json"))
             .body(responseBody);
     }
 
+    /**
+     * Actualizar usuario (PUT /Users/{id}) - SCIM
+     */
     @PutMapping("/Users/{id}")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimUser> replaceUser(
@@ -126,6 +129,9 @@ public class ScimController {
         }
     }
 
+    /**
+     * Desactivar/reactivar usuario (PATCH /Users/{id}) - SCIM
+     */
     @PatchMapping("/Users/{id}")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimUser> patchUser(
@@ -144,6 +150,9 @@ public class ScimController {
         }
     }
 
+    /**
+     * Eliminar usuario (DELETE /Users/{id}) - SCIM
+     */
     @DeleteMapping("/Users/{id}")
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<Void> deleteUser(
@@ -273,5 +282,4 @@ public class ScimController {
         }
     }
 
-    // Todos los endpoints SCIM requeridos están implementados.
 }

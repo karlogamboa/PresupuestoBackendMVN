@@ -6,6 +6,7 @@ import com.cdc.fin.presupuesto.util.UserAuthUtils;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +19,9 @@ public class SolicitudPresupuestoService {
 
     private final SolicitudPresupuestoRepository repository;
     private final EmailService emailService;
+
+    @Value("${presupuesto.solicitud.prefix:REQ-}")
+    private String solicitudPrefix;
 
     public SolicitudPresupuestoService(SolicitudPresupuestoRepository repository, EmailService emailService) {
         this.repository = repository;
@@ -53,7 +57,7 @@ public class SolicitudPresupuestoService {
         // String departamento = UserAuthUtils.getCurrentUserDepartment(); // Implementar si es necesario
 
         String id = UUID.randomUUID().toString();
-        String solicitudId = "REQ-" + System.currentTimeMillis();
+        String solicitudId = solicitudPrefix + System.currentTimeMillis();
         
         solicitud.setId(id);
         solicitud.setSolicitudId(solicitudId);
