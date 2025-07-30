@@ -66,8 +66,8 @@ public class SolicitudPresupuestoService {
 
         String userEmail = scimUser != null ? scimUser.getEmail() : emailActual;
         String userName = scimUser != null ? scimUser.getUserName() : null;
-        String numeroEmpleado = scimUser != null ? scimUser.getEmployeeNumber() : null;
-        String departamento = scimUser != null ? scimUser.getUserType() : null;
+        // String numeroEmpleado = scimUser != null ? scimUser.getEmployee_number() : null;
+        // String departamento = scimUser != null ? scimUser.getUser_type() : null;
 
         String id = UUID.randomUUID().toString();
         String solicitudId = solicitudPrefix + System.currentTimeMillis();

@@ -18,7 +18,7 @@ import com.cdc.fin.presupuesto.model.ScimUser;
 public class SamlUserController {
     private static final Logger logger = LoggerFactory.getLogger(SamlUserController.class);
 
-    @Value("${okta.slo.url:https://trial-4567848.okta.com/logout}")
+    @Value("${okta.slo.url}")
     private String oktaLogoutUrl;
 
     private final UserAuthUtils userAuthUtils;
@@ -37,7 +37,7 @@ public class SamlUserController {
 
         if (scimUser != null) {
             result.put("email", email);
-            result.put("userName", scimUser.getName());
+            result.put("userName", scimUser.getUserName());
             result.put("employeeNumber", scimUser.getEmployeeNumber());
             result.put("department", scimUser.getDepartment());
         } else {

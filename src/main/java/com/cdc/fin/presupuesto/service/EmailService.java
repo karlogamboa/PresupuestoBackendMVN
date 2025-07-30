@@ -11,7 +11,7 @@ public class EmailService {
 
     private final SesClient sesClient;
 
-    @Value("${email.charset:UTF-8}")
+    @Value("${email.charset}")
     private String charsetUtf8;
 
     @Autowired
