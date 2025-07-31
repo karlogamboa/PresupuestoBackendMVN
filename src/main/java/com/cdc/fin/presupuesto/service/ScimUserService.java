@@ -5,6 +5,7 @@ import com.cdc.fin.presupuesto.repository.ScimUserRepository;
 import com.cdc.fin.presupuesto.model.ScimUser;
 import com.cdc.fin.presupuesto.model.ScimListResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class ScimUserService {
@@ -20,7 +21,10 @@ public class ScimUserService {
 
     // Crea usuario y retorna el objeto ScimUser
     public ScimUser createUser(ScimUser user) throws JsonProcessingException {
-        return userRepository.createUser(user);
+        // Cambia para usar createUserFromJson si el objeto tiene schemas de extensión
+        ObjectMapper mapper = new ObjectMapper();
+        String json = mapper.writeValueAsString(user);
+        return userRepository.createUserFromJson(json);
     }
 
     // Obtiene usuario por id
@@ -50,5 +54,9 @@ public class ScimUserService {
 
     public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
         return userRepository.replaceUserFromJson(id, body);
+    }
+
+    public ScimUser createUserFromJson(String body) throws JsonProcessingException {
+        return userRepository.createUserFromJson(body);
     }
 }

@@ -69,7 +69,7 @@ public class SecurityConfig {
     @Value("${frontend.redirect-url}")
     private String frontendRedirectUrl;
 
-    @Value("${stage:qa}")
+    @Value("${api.stage:qa}")
     private String stage;
 
     @Value("${security.login.failure-url}")

@@ -86,15 +86,6 @@ public class OktaSAMLHelper {
         logger.info("NameID extraído: {}", nameId);
         attributesMap.put("NameID", List.of(nameId));
 
-        // Extraer atributos específicos y asignarlos a variables
-        String email = attributesMap.getOrDefault("email", List.of("Unspecified")).get(0);
-        String givenName = attributesMap.getOrDefault("given_name", List.of("Unspecified")).get(0);
-        String familyName = attributesMap.getOrDefault("family_name", List.of("Unspecified")).get(0);
-        String employeeNumber = attributesMap.getOrDefault("employee_number", List.of("Unspecified")).get(0);
-        String userType = attributesMap.getOrDefault("user_type", List.of("Unspecified")).get(0);
-
-        logger.info("Email: {}, Nombre: {}, Apellido: {}, Número de empleado: {}, Tipo de usuario: {}",
-            email, givenName, familyName, employeeNumber, userType);
         return attributesMap;
     }
 

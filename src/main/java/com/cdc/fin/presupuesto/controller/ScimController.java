@@ -79,14 +79,17 @@ public class ScimController {
     @PreAuthorize("hasAuthority('ROLE_SCIM')")
     public ResponseEntity<ScimUser> createUser(
         @RequestHeader(value = "Authorization", required = false) String authHeader,
-        @RequestBody ScimUser user) {
+        @RequestBody String body // <-- Recibe el body como String
+    ) {
         if (!isScimAuthorized(authHeader)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         try {
-            ScimUser response = scimUserService.createUser(user);
+            ScimUser response = scimUserService.createUserFromJson(body); // <-- Usa el método correcto
+            logger.info("SCIM response to Okta (createUser): {}", new ObjectMapper().writeValueAsString(response));
             return ResponseEntity.status(HttpStatus.CREATED).body(response); // HttpStatus.CREATED
         } catch (Exception e) {
+            logger.error("Error creating SCIM user", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -144,6 +147,7 @@ public class ScimController {
         }
         try {
             ScimUser result = scimUserService.patchUser(id, patch);
+            logger.info("SCIM response to Okta (patchUser): {}", new ObjectMapper().writeValueAsString(result));
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             logger.error("Error modificando usuario SCIM", e);
@@ -275,12 +279,10 @@ public class ScimController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         try {
-            scimGroupService.deleteGroup(id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             logger.error("Error eliminando grupo SCIM", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
 }

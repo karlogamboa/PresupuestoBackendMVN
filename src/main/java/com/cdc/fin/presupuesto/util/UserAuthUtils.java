@@ -1,7 +1,6 @@
 package com.cdc.fin.presupuesto.util;
 
 import com.cdc.fin.presupuesto.model.ScimUser;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -39,24 +38,36 @@ public class UserAuthUtils {
                 user.setId(item.get("id").s());
                 user.setUserName(item.get("userName").s());
                 user.setActive(item.containsKey("active") ? item.get("active").bool() : true);
-                if (item.containsKey("given_name") || item.containsKey("family_name")) {
+                if (item.containsKey("firstName") || item.containsKey("lastName")) {
                     ScimUser.Name name = new ScimUser.Name();
-                    if (item.containsKey("given_name")) {
-                        name.setGivenName(item.get("given_name").s());
+                    if (item.containsKey("firstName")) {
+                        name.setGivenName(item.get("firstName").s());
+                        user.setFirstName(item.get("firstName").s()); // SAML mapping
                     }
-                    if (item.containsKey("family_name")) {
-                        name.setFamilyName(item.get("family_name").s());
+                    if (item.containsKey("lastName")) {
+                        name.setFamilyName(item.get("lastName").s());
+                        user.setLastName(item.get("lastName").s()); // SAML mapping
                     }
                     user.setName(name);
                 }
                 if (item.containsKey("email"))
                     user.setEmails(List.of(new ScimUser.Email(item.get("email").s(), true, "work")));
-                if (item.containsKey("employee_number"))
-                    user.setEmployeeNumber(item.get("employee_number").s());
-                if (item.containsKey("user_type"))
-                    user.setUserType(item.get("user_type").s());
-                    if(item.containsKey("department"))
+                if (item.containsKey("employeeNumber"))
+                    user.setEmployeeNumber(item.get("employeeNumber").s());
+                if (item.containsKey("userType"))
+                    user.setUserType(item.get("userType").s());
+                if (item.containsKey("department"))
                     user.setDepartment(item.get("department").s());
+                if (item.containsKey("displayName"))
+                    user.setDisplayName(item.get("displayName").s());
+                if (item.containsKey("admin"))
+                    user.setAdmin(item.get("admin").s());
+                // SAML/Group attributes
+                if (item.containsKey("roles")) {
+                    // DynamoDB stores as string, split if needed
+                    String rolesStr = item.get("roles").s();
+                    user.setRoles(java.util.Arrays.asList(rolesStr.split(",")));
+                }
                 return user;
             } catch (Exception e) {
                 e.printStackTrace();

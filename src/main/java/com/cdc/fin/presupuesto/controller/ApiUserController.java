@@ -5,6 +5,7 @@ import com.cdc.fin.presupuesto.util.UserAuthUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -64,6 +65,25 @@ public class ApiUserController {
             result.put("userName", scimUser.getUserName());
             result.put("employeeNumber", scimUser.getEmployeeNumber());
             result.put("department", scimUser.getDepartment());
+            result.put("displayName", scimUser.getDisplayName());
+            result.put("firstName", scimUser.getFirstName());      
+            result.put("lastName", scimUser.getLastName());
+            result.put("userType", scimUser.getUserType());
+            result.put("active", scimUser.getActive() != null ? scimUser.getActive() : true);
+            result.put("admin", scimUser.getAdmin() != null ? scimUser.getAdmin() : "false");
+            result.put("roles", scimUser.getRoles() != null ? scimUser.getRoles() : List.of());
+            // Si tienes otros atributos SAML, puedes agregarlos aquí   
+            result.put("id", scimUser.getId());
+            scimUser.syncNameFromFirstLast(); // Asegura que el nombre esté sincron
+            result.put("name", scimUser.getName() != null ? scimUser.getName() : new ScimUser.Name());
+            result.put("schemas", scimUser.getSchemas() != null ? scimUser.getSchemas() : List.of("urn:ietf:params:scim:schemas:core:2.0:User"));
+            // Si tienes otros atributos SAML, puedes agregarlos aquí
+            if (scimUser.getEmails() != null && !scimUser.getEmails().isEmpty()) {
+                result.put("emails", scimUser.getEmails());
+            } else {
+                result.put("emails", List.of(new ScimUser.Email(email, true, "work")));
+            }
+
         } else {
             result.put("email", email);
             result.put("userName", null);
