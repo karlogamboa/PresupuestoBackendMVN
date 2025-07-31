@@ -47,4 +47,8 @@ public class ScimUserService {
     public ScimListResponse<ScimUser> listUsers(String filter) throws JsonProcessingException {
         return userRepository.listUsers(filter);
     }
+
+    public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
+        return userRepository.replaceUserFromJson(id, body);
+    }
 }

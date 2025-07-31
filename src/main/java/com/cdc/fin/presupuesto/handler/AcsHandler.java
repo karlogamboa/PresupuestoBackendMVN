@@ -56,6 +56,7 @@ public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
             String token = JWT.create()
                 .withSubject(nameId)
                 .withClaim("email", nameId)
+                .withClaim("authType", "SAML") // <-- Agrega este claim
                 .withIssuedAt(Date.from(Instant.now()))
                 .withExpiresAt(Date.from(Instant.now().plusSeconds(3600)))
                 .sign(algorithm);

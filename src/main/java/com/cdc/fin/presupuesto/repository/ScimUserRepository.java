@@ -42,6 +42,9 @@ public class ScimUserRepository {
             for (Map.Entry<String, Object> entry : samlAttrs.entrySet()) {
                 // Ejemplo: guardar como string JSON
                 updateValues.put(entry.getKey(), AttributeValue.builder().s(entry.getValue().toString()).build());
+                if ("employeeNumber".equals(entry.getKey()) || "department".equals(entry.getKey())) {
+                    updateValues.put(entry.getKey(), AttributeValue.builder().s(entry.getValue().toString()).build());
+                }
             }
             // Actualiza el usuario con los nuevos atributos
             Map<String, AttributeValue> key = Map.of("id", AttributeValue.builder().s(userId).build());
@@ -65,6 +68,7 @@ public class ScimUserRepository {
 
     // Crear usuario (POST /Users)
     public ScimUser createUser(ScimUser user) throws JsonProcessingException {
+        user.setUserType(getUserRoleType(user)); // <-- Guarda el tipo de usuario
         String id = java.util.UUID.randomUUID().toString();
         user.setId(id);
         ensureScimCompliance(user);
@@ -85,8 +89,6 @@ public class ScimUserRepository {
                 item.put("family_name", AttributeValue.builder().s(user.getName().getFamilyName()).build());
             if (user.getEmployeeNumber() != null)
                 item.put("employee_number", AttributeValue.builder().s(user.getEmployeeNumber()).build());
-            if (user.getUserType() != null)
-                item.put("user_type", AttributeValue.builder().s(user.getUserType()).build());
             if (user.getDepartment() != null)
                 item.put("department", AttributeValue.builder().s(user.getDepartment()).build());
             // ...otros campos relevantes...
@@ -137,6 +139,8 @@ public class ScimUserRepository {
             if (item.containsKey("department"))
                 user.setDepartment(item.get("department").s());
             ensureScimCompliance(user);
+            // Establece el tipo de usuario según roles
+            user.setUserType(getUserRoleType(user));
             return user;
         }
         return null;
@@ -144,6 +148,7 @@ public class ScimUserRepository {
 
     // Actualizar usuario (PUT /Users/{id})
     public ScimUser replaceUser(String id, ScimUser user) throws JsonProcessingException {
+        user.setUserType(getUserRoleType(user));
         user.setId(id);
         ensureScimCompliance(user);
 
@@ -154,7 +159,6 @@ public class ScimUserRepository {
             item.put("active", AttributeValue.builder().bool(user.getActive() != null ? user.getActive() : true).build());
             if (user.getName() != null)
                 item.put("name", AttributeValue.builder().s(new ObjectMapper().writeValueAsString(user.getName())).build());
-            // Nuevos atributos SAML/enterprise
             if (user.getEmails() != null && !user.getEmails().isEmpty())
                 item.put("email", AttributeValue.builder().s(user.getEmails().get(0).getValue()).build());
             if (user.getName() != null && user.getName().getGivenName() != null)
@@ -163,8 +167,6 @@ public class ScimUserRepository {
                 item.put("family_name", AttributeValue.builder().s(user.getName().getFamilyName()).build());
             if (user.getEmployeeNumber() != null)
                 item.put("employee_number", AttributeValue.builder().s(user.getEmployeeNumber()).build());
-            if (user.getUserType() != null)
-                item.put("user_type", AttributeValue.builder().s(user.getUserType()).build());
             if (user.getDepartment() != null)
                 item.put("department", AttributeValue.builder().s(user.getDepartment()).build());
             // ...otros campos relevantes...
@@ -249,6 +251,8 @@ public class ScimUserRepository {
                 if (item.containsKey("family_name"))
                     user.setFamily_name(item.get("family_name").s());
                 ensureScimCompliance(user);
+                // Establece el tipo de usuario según roles
+                user.setUserType(getUserRoleType(user));
                 filteredUsers.add(user);
             }
         } else {
@@ -309,6 +313,8 @@ public class ScimUserRepository {
                     if (item.containsKey("family_name"))
                         user.setFamily_name(item.get("family_name").s());
                     ensureScimCompliance(user);
+                    // Establece el tipo de usuario según roles
+                    user.setUserType(getUserRoleType(user));
                     userResources.add(user);
                 } catch (Exception e) {
                     System.err.println("Error procesando el registro de usuario: " + item);
@@ -349,6 +355,15 @@ public class ScimUserRepository {
 
         ScimUser user = mapper.treeToValue(root, ScimUser.class);
 
+        // Extraer employeeNumber y department del objeto raíz si existen
+        if (root.has("employeeNumber")) {
+            user.setEmployeeNumber(root.get("employeeNumber").asText());
+        }
+        if (root.has("department")) {
+            user.setDepartment(root.get("department").asText());
+        }
+
+        // Extraer de la extensión enterprise si existen
         JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
         if (enterpriseNode != null) {
             if (enterpriseNode.has("employeeNumber")) {
@@ -362,11 +377,23 @@ public class ScimUserRepository {
     }
 
     public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
+        // Agrega logs para depuración
+        System.out.println("[SCIM] replaceUserFromJson called with id: " + id);
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(body);
 
         ScimUser user = mapper.treeToValue(root, ScimUser.class);
+        System.out.println("[SCIM] Parsed user: " + user);
 
+        // Extraer employeeNumber y department del objeto raíz si existen
+        if (root.has("employeeNumber")) {
+            user.setEmployeeNumber(root.get("employeeNumber").asText());
+        }
+        if (root.has("department")) {
+            user.setDepartment(root.get("department").asText());
+        }
+
+        // Extraer de la extensión enterprise si existen
         JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
         if (enterpriseNode != null) {
             if (enterpriseNode.has("employeeNumber")) {
@@ -378,4 +405,25 @@ public class ScimUserRepository {
         }
         return replaceUser(id, user);
     }
+
+    /**
+     * Retorna el tipo de usuario según el rol principal en la lista de roles.
+     * Si contiene "ADMIN" (case-insensitive), retorna "ADMIN".
+     * Si contiene "USER" (case-insensitive), retorna "USER".
+     * Si no contiene ninguno, retorna "UNKNOWN".
+     */
+    public String getUserRoleType(ScimUser user) {
+        if (user.getRoles() != null) {
+            for (String role : user.getRoles()) {
+                if (role != null && role.toUpperCase().contains("ADMIN")) {
+                    return "ADMIN";
+                }
+                if (role != null && role.toUpperCase().contains("USER")) {
+                    return "USER";
+                }
+            }
+        }
+        return "UNKNOWN";
+    }
 }
+

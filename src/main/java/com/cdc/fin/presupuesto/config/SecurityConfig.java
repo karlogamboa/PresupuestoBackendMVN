@@ -89,19 +89,24 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        String loginPageUrl = "/" + stage + "/login";
+        String failurePageUrl = "/" + stage + "/login?error";
+
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/login", "/qa/login", "/scim/v2/**").permitAll() // <-- permite /qa/login
-                .requestMatchers("/api/**", "/saml/user").authenticated()
-                .anyRequest().authenticated()
+            .requestMatchers("/health", loginPageUrl, "/scim/v2/**").permitAll()
+            .requestMatchers("/api/**").authenticated()
+            .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
-            .saml2Login(saml2 -> saml2.successHandler(jwtSamlSuccessHandler()))
+            .saml2Login(saml2 -> saml2
+            .successHandler(jwtSamlSuccessHandler())
+            )
             .formLogin(form -> form
-                .loginPage("/qa/login") // <-- loginPage ajustado
-                .failureUrl("/qa/login?error") // <-- failureUrl ajustado
+            .loginPage(loginPageUrl)
+            .failureUrl(failurePageUrl)
             )
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();

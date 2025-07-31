@@ -79,11 +79,17 @@ public class ScimUser {
     public void setSchemas(List<String> schemas) { this.schemas = schemas; }
 
     // SAML attributes
+    @JsonProperty("email")
     private String email;
+    @JsonProperty("given_name")
     private String given_name;
+    @JsonProperty("family_name")
     private String family_name;
+    @JsonProperty("employee_number")
     private String employeeNumber;
+    @JsonProperty("user_type")
     private String userType;
+    @JsonProperty("department")
     private String department;
 
     public String getEmail() { return email; }

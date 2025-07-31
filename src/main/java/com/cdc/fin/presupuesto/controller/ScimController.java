@@ -117,12 +117,13 @@ public class ScimController {
     public ResponseEntity<ScimUser> replaceUser(
         @RequestHeader(value = "Authorization", required = false) String authHeader,
         @PathVariable String id,
-        @RequestBody ScimUser user) {
+        @RequestBody String body // <-- Recibe el body como String
+    ) {
         if (!isScimAuthorized(authHeader)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         try {
-            ScimUser result = scimUserService.replaceUser(id, user);
+            ScimUser result = scimUserService.replaceUserFromJson(id, body); // <-- Usa el método correcto
             return ResponseEntity.ok(result); // HttpStatus.OK
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
