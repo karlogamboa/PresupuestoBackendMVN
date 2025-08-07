@@ -94,7 +94,7 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/health", loginPageUrl, "/scim/v2/**").permitAll()
+            .requestMatchers("/health", loginPageUrl, "/scim/v2/**", "/api/netsuite/**").permitAll()
             .requestMatchers("/api/**").authenticated()
             .anyRequest().authenticated()
             )
