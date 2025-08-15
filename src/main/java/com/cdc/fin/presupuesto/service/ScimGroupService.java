@@ -24,11 +24,15 @@ public class ScimGroupService {
     @Autowired(required = false)
     private DynamoDbClient dynamoDbClient;
 
-    @Value("${aws.dynamodb.table.scim-groups:}")
+    @Autowired
+    private ScimGroupRepository groupRepository;
+
     private String groupsTable;
 
     @Autowired
-    private ScimGroupRepository groupRepository;
+    public void setGroupsTable(@Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
+        this.groupsTable = tablePrefix + "scim-groups";
+    }
 
     public ScimListResponse<ScimGroup> listGroups() {
         List<ScimGroup> groupResources = new ArrayList<>();

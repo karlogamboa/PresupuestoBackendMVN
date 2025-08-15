@@ -3,14 +3,19 @@ package com.cdc.fin.presupuesto.controller;
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import com.cdc.fin.presupuesto.repository.SolicitudPresupuestoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.cdc.fin.presupuesto.util.UserAuthUtils;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 import com.cdc.fin.presupuesto.model.ScimUser;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -19,6 +24,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.cdc.fin.presupuesto.service.UserInfoService;
+import com.cdc.fin.presupuesto.service.EmailService;
+import com.cdc.fin.presupuesto.service.ProcesarSolicitudesService;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
+
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import java.util.Base64;
+
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
 public class SolicitudPresupuestoController {
@@ -26,20 +43,50 @@ public class SolicitudPresupuestoController {
     private static final Logger logger = LoggerFactory.getLogger(SolicitudPresupuestoController.class);
 
     private final SolicitudPresupuestoRepository solicitudPresupuestoRepository;
+    private final ProcesarSolicitudesService procesarSolicitudesService;
     private final UserAuthUtils userAuthUtils;
+    
+    private final EmailService emailService;
+
 
     @Autowired
-    public SolicitudPresupuestoController(SolicitudPresupuestoRepository solicitudPresupuestoRepository, UserAuthUtils userAuthUtils) {
+    public SolicitudPresupuestoController(ProcesarSolicitudesService procesarSolicitudesService,
+                                          SolicitudPresupuestoRepository solicitudPresupuestoRepository,
+                                          UserAuthUtils userAuthUtils,
+                                          EmailService emailService) {
+
+        this.procesarSolicitudesService = procesarSolicitudesService;
         this.solicitudPresupuestoRepository = solicitudPresupuestoRepository;
         this.userAuthUtils = userAuthUtils;
+        this.emailService = emailService;
     }
 
     @GetMapping
-    // No Swagger/OpenAPI annotations
-    public ResponseEntity<List<SolicitudPresupuesto>> getAllSolicitudes() {
+    public ResponseEntity<Map<String, Object>> getAllSolicitudes(
+            @RequestParam Map<String, String> params) {
         try {
-            List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findAll();
-            return ResponseEntity.ok(solicitudes);
+            int page = params.containsKey("page") ? Integer.parseInt(params.get("page")) : 0;
+            int size = params.containsKey("size") ? Integer.parseInt(params.get("size")) : 20;
+
+            // Validar que page no sea menor que cero
+            if (page < 0) {
+                page = 0;
+            }
+
+            // Elimina page y size del mapa de filtros
+            params.remove("page");
+            params.remove("size");
+
+            // Llama al servicio/repositorio con filtros dinámicos
+            Page<SolicitudPresupuesto> solicitudesPage = solicitudPresupuestoRepository.findByDynamicFilters(params, PageRequest.of(page, size));
+
+            return ResponseEntity.ok(Map.of(
+                "content", solicitudesPage.getContent(),
+                "totalElements", solicitudesPage.getTotalElements(),
+                "totalPages", solicitudesPage.getTotalPages(),
+                "page", solicitudesPage.getNumber(),
+                "size", solicitudesPage.getSize()
+            ));
         } catch (Exception e) {
             logger.error("Error obteniendo solicitudes de presupuesto: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -119,6 +166,24 @@ public class SolicitudPresupuestoController {
 
             // Guardar la solicitud
             SolicitudPresupuesto savedSolicitud = solicitudPresupuestoRepository.save(solicitud);
+
+            // --- ENVÍO DE CORREOS NUEVA SOLICITUD ---
+            try {
+                // 5A. Correo al aprobador
+                emailService.sendNuevaSolicitudAprobadorEmail(savedSolicitud);     
+        
+                // 5B. Correo al solicitante
+                String correoSolicitante = savedSolicitud.getCorreo();
+                if (correoSolicitante != null && !correoSolicitante.isEmpty()) {
+                    emailService.sendNuevaSolicitudSolicitanteEmail(correoSolicitante, savedSolicitud);
+                } else {
+                    logger.warn("No se envió correo al solicitante porque el correo es nulo o vacío");
+                }
+            } catch (Exception ex) {
+                logger.error("No se pudo enviar correo de nueva solicitud: {}", ex.getMessage(), ex);
+            }
+            // --- FIN ENVÍO DE CORREOS ---
+
             return ResponseEntity.status(HttpStatus.CREATED).body(savedSolicitud);
         } catch (Exception e) {
             logger.error("Error creando solicitud de presupuesto: {}", e.getMessage(), e);
@@ -201,49 +266,52 @@ public class SolicitudPresupuestoController {
         }
     }
 
-    @PatchMapping("/{id}/estatus")
-    public ResponseEntity<Map<String, Object>> updateEstatus(
-            @PathVariable String id,
-            @RequestParam(required = false) String solicitudId,
-            @RequestBody Map<String, String> estatusRequest) {
+    
+    @GetMapping("/procesar")
+    public ResponseEntity<byte[]> exportarExcel() {
         try {
-            // Si no se proporciona solicitudId, usar el mismo ID
-            if (solicitudId == null || solicitudId.isEmpty()) {
-                solicitudId = id;
-            }
-            
-            // Verificar que la solicitud existe
-            Optional<SolicitudPresupuesto> existingSolicitud = solicitudPresupuestoRepository.findById(id, solicitudId);
-            if (!existingSolicitud.isPresent()) {
-                logger.warn("Solicitud no encontrada para ID: {}", id);
-                return ResponseEntity.notFound().build();
-            }
-            
-            String nuevoEstatus = estatusRequest.get("estatus");
-            if (nuevoEstatus == null || nuevoEstatus.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("success", false, "message", "Estatus es requerido"));
-            }
-            
-            // Actualizar solo el estatus
-            SolicitudPresupuesto solicitud = existingSolicitud.get();
-            solicitud.setEstatusConfirmacion(nuevoEstatus);
-            solicitud.setFechaActualizacion(Instant.now());
-            
-            // Guardar la solicitud actualizada
-            SolicitudPresupuesto updatedSolicitud = solicitudPresupuestoRepository.save(solicitud);
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Estatus actualizado exitosamente",
-                "solicitud", updatedSolicitud
-            ));
-        } catch (Exception e) {
-            logger.error("Error actualizando estatus de solicitud: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "message", "Error interno del servidor"));
+            byte[] excelBytes = procesarSolicitudesService.procesarYExportarExcel();
+            return ResponseEntity.ok()
+                .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .header("Content-Disposition", "attachment; filename=\"solicitudes.xlsx\"")
+                .body(excelBytes);
+        } catch (Exception ex) {
+            logger.error("Error exportando Excel", ex);
+            return ResponseEntity.internalServerError().build();
         }
     }
-    
+
+    // Reemplaza el endpoint POST /procesar para Lambda Proxy Integration (Base64)
+    @PostMapping("/procesar")
+    public APIGatewayProxyResponseEvent procesarSolicitudesLambda() {
+        logger.info("POST /api/solicitudes-presupuesto/procesar endpoint invoked (Lambda Proxy Integration)");
+        try {
+            logger.info("Llamando a procesarYExportarExcel...");
+            byte[] excelBytes = procesarSolicitudesService.procesarYExportarExcel();
+            logger.info("Bytes a codificar en Base64: {}", excelBytes.length);
+            String base64Body = Base64.getEncoder().encodeToString(excelBytes);
+
+            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+            response.setStatusCode(200);
+            response.setIsBase64Encoded(true);
+            response.setHeaders(Map.of(
+                "Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Content-Disposition", "attachment; filename=\"solicitudes.xlsx\""
+            ));
+            response.setBody(base64Body);
+            logger.info("Procesamiento y exportación de solicitudes completado (Lambda Proxy Integration).");
+            return response;
+        } catch (Exception ex) {
+            logger.error("Error en procesarYExportarExcel: {}", ex.getMessage(), ex);
+            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+            response.setStatusCode(500);
+            response.setHeaders(Map.of("Content-Type", "application/json"));
+            response.setBody("{\"success\":false,\"message\":\"Error procesando solicitudes: " + ex.getMessage().replace("\"", "\\\"") + "\"}");
+            response.setIsBase64Encoded(false);
+            return response;
+        }
+    }
+
     @PutMapping("/cambiar-estatus")
     public ResponseEntity<Map<String, Object>> cambiarEstatus(
             @RequestBody Map<String, Object> request) {
@@ -251,6 +319,7 @@ public class SolicitudPresupuestoController {
             String id = null;
             String solicitudId = null;
             String nuevoEstatus = null;
+            String userLogueado = request.get("userLogueado") != null ? request.get("userLogueado").toString() : "";
             // Manejar diferentes formatos de payload
             if (request.containsKey("solicitud")) {
                 nuevoEstatus = (String) request.get("estatusConfirmacion");
@@ -283,6 +352,39 @@ public class SolicitudPresupuestoController {
             solicitud.setFechaActualizacion(Instant.now());
             // Guardar la solicitud actualizada
             SolicitudPresupuesto updatedSolicitud = solicitudPresupuestoRepository.save(solicitud);
+
+            // --- ENVÍO DE CORREO SEGÚN CAMBIO DE ESTATUS ---
+            try {
+                String motivoRechazo = request.get("motivoRechazo") != null ? request.get("motivoRechazo").toString() : "";
+                String correoSolicitante = solicitud.getCorreo();
+                // Obtener el displayName del usuario logueado (aprobador)
+                String nombreAprobador = "";
+                try {
+                    // Obtener el correo del usuario autenticado desde el header (API Gateway Authorizer)
+                    ScimUser scimUserAprobador = userAuthUtils.getScimUserByEmail(userLogueado);
+                    if (scimUserAprobador != null && scimUserAprobador.getDisplayName() != null && !scimUserAprobador.getDisplayName().isEmpty()) {
+                        nombreAprobador = scimUserAprobador.getDisplayName();
+                    } else {
+                        nombreAprobador = userLogueado;
+                    }
+                } catch (Exception ex) {
+                    logger.warn("No se pudo obtener el nombre del aprobador, usando correo. Error: {}", ex.getMessage());
+                    nombreAprobador = "";
+                }
+                emailService.sendNotificacionCambioEstatus(
+                    estatusAnterior,
+                    nuevoEstatus,
+                    correoSolicitante,
+                    solicitud,
+                    motivoRechazo,
+                    nombreAprobador,
+                    ""
+                );
+            } catch (Exception ex) {
+                logger.warn("No se pudo enviar correo de notificación de estatus: {}", ex.getMessage());
+            }
+            // --- FIN ENVÍO DE CORREO ---
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Estatus actualizado exitosamente",
@@ -298,8 +400,3 @@ public class SolicitudPresupuestoController {
         }
     }
 }
-
-
-
-
-

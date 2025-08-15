@@ -1,6 +1,10 @@
 package com.cdc.fin.presupuesto.controller;
 
 import com.cdc.fin.presupuesto.service.EmailService;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +24,7 @@ public class EmailController {
     }
 
     @PostMapping("/send")
-    public ResponseEntity<String> sendEmail(@RequestBody EmailRequest request) {
+    public ResponseEntity<Map<String, Object>> sendEmail(@RequestBody EmailRequest request) {
         try {
             String messageId = emailService.sendSimpleEmail(
                 emailFrom,
@@ -28,43 +32,51 @@ public class EmailController {
                 request.getSubject(),
                 request.getBody()
             );
-            return ResponseEntity.ok(messageId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("id", messageId);
+            return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error al enviar el correo: " + e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "Error al enviar el correo: " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 
-    @PostMapping("/send-budget-notification")
-    public ResponseEntity<String> sendBudgetNotification(@RequestBody BudgetNotificationRequest request) {
-        try {
-            emailService.sendBudgetRequestNotification(
-                emailFrom,
-                request.getTo(),
-                request.getRequestId(),
-                request.getRequesterName(),
-                request.getAmount()
-            );
-            return ResponseEntity.ok("Notificación enviada correctamente");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error al enviar la notificación: " + e.getMessage());
-        }
-    }
+    // @PostMapping("/send-budget-notification")
+    // public ResponseEntity<String> sendBudgetNotification(@RequestBody BudgetNotificationRequest request) {
+    //     try {
+    //         emailService.sendBudgetRequestNotification(
+    //             emailFrom,
+    //             request.getTo(),
+    //             request.getRequestId(),
+    //             request.getRequesterName(),
+    //             request.getAmount()
+    //         );
+    //         return ResponseEntity.ok("Notificación enviada correctamente");
+    //     } catch (Exception e) {
+    //         return ResponseEntity.status(500).body("Error al enviar la notificación: " + e.getMessage());
+    //     }
+    // }
 
-    @PostMapping("/send-status-notification")
-    public ResponseEntity<String> sendStatusNotification(@RequestBody StatusNotificationRequest request) {
-        try {
-            emailService.sendBudgetStatusNotification(
-                emailFrom,
-                request.getTo(),
-                request.getRequestId(),
-                request.getStatus(),
-                request.getComments()
-            );
-            return ResponseEntity.ok("Notificación de estatus enviada correctamente");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error al enviar la notificación de estatus: " + e.getMessage());
-        }
-    }
+    // @PostMapping("/send-status-notification")
+    // public ResponseEntity<String> sendStatusNotification(@RequestBody StatusNotificationRequest request) {
+    //     try {
+    //         emailService.sendBudgetStatusNotification(
+    //             emailFrom,
+    //             request.getTo(),
+    //             request.getRequestId(),
+    //             request.getStatus(),
+    //             request.getComments()
+    //         );
+    //         return ResponseEntity.ok("Notificación de estatus enviada correctamente");
+    //     } catch (Exception e) {
+    //         return ResponseEntity.status(500).body("Error al enviar la notificación de estatus: " + e.getMessage());
+    //     }
+    // }
 
     // DTOs internos para las peticiones
     public static class EmailRequest {

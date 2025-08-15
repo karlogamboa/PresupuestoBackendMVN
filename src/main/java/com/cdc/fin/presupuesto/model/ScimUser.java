@@ -22,8 +22,8 @@ public class ScimUser {
     @JsonProperty("active")
     private Boolean active;
 
-    @JsonProperty("roles")
-    private List<String> roles;
+    @JsonProperty("group")
+    private List<String> group;
 
     // SCIM requiere el campo "schemas" en el JSON
     @JsonProperty("schemas")
@@ -55,16 +55,33 @@ public class ScimUser {
         public void setType(String type) { this.type = type; }
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Name {
         @JsonProperty("givenName")
         private String givenName;
         @JsonProperty("familyName")
         private String familyName;
+        @JsonProperty("middleName")
+        private String middleName; // <-- Add this property
+        @JsonProperty("honorificPrefix")
+        private String honorificPrefix;
+        @JsonProperty("honorificSuffix")
+        private String honorificSuffix;
 
         public String getGivenName() { return givenName; }
         public void setGivenName(String givenName) { this.givenName = givenName; }
+
         public String getFamilyName() { return familyName; }
         public void setFamilyName(String familyName) { this.familyName = familyName; }
+
+        public String getMiddleName() { return middleName; }
+        public void setMiddleName(String middleName) { this.middleName = middleName; }
+
+        public String getHonorificPrefix() { return honorificPrefix; }
+        public void setHonorificPrefix(String honorificPrefix) { this.honorificPrefix = honorificPrefix; }
+
+        public String getHonorificSuffix() { return honorificSuffix; }
+        public void setHonorificSuffix(String honorificSuffix) { this.honorificSuffix = honorificSuffix; }
     }
 
     public String getId() { return id; }
@@ -77,8 +94,8 @@ public class ScimUser {
     public void setEmails(List<Email> emails) { this.emails = emails; }
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
-    public List<String> getRoles() { return roles; }
-    public void setRoles(List<String> roles) { this.roles = roles; }
+    public List<String> getGroup() { return group; }
+    public void setGroup(List<String> group) { this.group = group; }
     public List<String> getSchemas() { return schemas; }
     public void setSchemas(List<String> schemas) { this.schemas = schemas; }
 
@@ -97,8 +114,6 @@ public class ScimUser {
     private String department;
     @JsonProperty("displayName")
     private String displayName;
-    @JsonProperty("admin")
-    private String admin;
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -114,9 +129,7 @@ public class ScimUser {
     public void setDepartment(String department) { this.department = department; }
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
-    public String getAdmin() { return admin; }
-    public void setAdmin(String admin) { this.admin = admin; }
-
+ 
     public void syncNameFromFirstLast() {
         if (this.name == null) this.name = new Name();
         if (this.firstName != null) this.name.setGivenName(this.firstName);

@@ -11,6 +11,7 @@ public class Departamento {
     private String nombreDepartamento;
     private String subDepartamento;
     private String ceco;
+    private String presupuestoDefault;
 
     public Departamento() {}
 
@@ -48,5 +49,14 @@ public class Departamento {
 
     public void setCeco(String ceco) {
         this.ceco = ceco;
+    }
+
+    @DynamoDbAttribute("PresupuestoDefault")
+    public String getPresupuestoDefault() {
+        return presupuestoDefault;
+    }
+
+    public void setPresupuestoDefault(String presupuestoDefault) {
+        this.presupuestoDefault = presupuestoDefault;
     }
 }

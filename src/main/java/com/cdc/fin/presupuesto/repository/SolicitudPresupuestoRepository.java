@@ -3,6 +3,9 @@ package com.cdc.fin.presupuesto.repository;
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -16,6 +19,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.WriteBatch;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -68,6 +72,26 @@ public class SolicitudPresupuestoRepository {
                 .collect(Collectors.toList());
     }
 
+    // Método paginado para buscar por número de empleado
+    public Page<SolicitudPresupuesto> findByNumEmpleado(String numeroEmpleado, Pageable pageable) {
+        List<SolicitudPresupuesto> all = findByNumEmpleado(numeroEmpleado);
+        int total = all.size();
+        int fromIndex = Math.min((int) pageable.getOffset(), total);
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
+        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
+        return new PageImpl<>(paged, pageable, total);
+    }
+
+    // Método paginado para buscar todos
+    public Page<SolicitudPresupuesto> findAll(Pageable pageable) {
+        List<SolicitudPresupuesto> all = findAll();
+        int total = all.size();
+        int fromIndex = Math.min((int) pageable.getOffset(), total);
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
+        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
+        return new PageImpl<>(paged, pageable, total);
+    }
+
     public void deleteById(String id, String solicitudId) {
         Key key = Key.builder()
                 .partitionValue(id)
@@ -94,5 +118,64 @@ public class SolicitudPresupuestoRepository {
                 .writeBatches(writeBatchBuilder.build())
                 .build());
         }
+    }
+
+    public Page<SolicitudPresupuesto> findByDynamicFilters(Map<String, String> filters, Pageable pageable) {
+        // Escaneo completo y filtrado en memoria (útil para pocos registros)
+        List<SolicitudPresupuesto> all = findAll().stream()
+            .filter(s -> {
+                boolean matches = true;
+                for (Map.Entry<String, String> entry : filters.entrySet()) {
+                    String key = entry.getKey();
+                    String value = entry.getValue();
+                    if (value == null || value.isEmpty()) continue;
+                    // Comparación dinámica por campo (búsqueda parcial, case-insensitive)
+                    switch (key) {
+                        case "numeroEmpleado":
+                            matches &= s.getNumeroEmpleado() != null && s.getNumeroEmpleado().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "estatusConfirmacion":
+                            matches &= s.getEstatusConfirmacion() != null && s.getEstatusConfirmacion().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "departamento":
+                            matches &= s.getDepartamento() != null && s.getDepartamento().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "proveedor":
+                            matches &= s.getProveedor() != null && s.getProveedor().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "solicitante":
+                            matches &= s.getSolicitante() != null && s.getSolicitante().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "subDepartamento":
+                            matches &= s.getSubDepartamento() != null && s.getSubDepartamento().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "categoriaGasto":
+                            matches &= s.getCategoriaGasto() != null && s.getCategoriaGasto().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "cuentaGastos":
+                            matches &= s.getCuentaGastos() != null && s.getCuentaGastos().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "periodoPresupuesto":
+                            matches &= s.getPeriodoPresupuesto() != null && s.getPeriodoPresupuesto().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        case "fecha":
+                            matches &= s.getFecha() != null && s.getFecha().toLowerCase().contains(value.toLowerCase());
+                            break;
+                        // Agrega más campos según tu modelo
+                        default:
+                            // Si el campo no es reconocido, ignora el filtro
+                            break;
+                    }
+                    if (!matches) break;
+                }
+                return matches;
+            })
+            .collect(Collectors.toList());
+
+        int total = all.size();
+        int fromIndex = Math.min((int) pageable.getOffset(), total);
+        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
+        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
+        return new PageImpl<>(paged, pageable, total);
     }
 }

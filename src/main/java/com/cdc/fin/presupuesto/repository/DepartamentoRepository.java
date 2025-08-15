@@ -71,4 +71,12 @@ public class DepartamentoRepository {
                 .build());
         }
     }
+
+    // Busca el primer departamento que tenga el ceco dado (no es búsqueda por partition key)
+    public Departamento findByCeco(String ceco) {
+        return findAll().stream()
+            .filter(d -> ceco != null && ceco.equals(d.getCeco()))
+            .findFirst()
+            .orElse(null);
+    }
 }

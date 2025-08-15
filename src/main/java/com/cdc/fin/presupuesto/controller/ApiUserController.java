@@ -44,88 +44,95 @@ public class ApiUserController {
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
-        }
+        try {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
+            }
 
-        // Verifica si el JWT está expirado (usando detalles del authentication si se propaga la excepción)
-        if (authentication.getDetails() instanceof Exception ex &&
-            ex.getClass().getSimpleName().equalsIgnoreCase("ExpiredJwtException")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "JWT expired"));
-        }
+            // Verifica si el JWT está expirado (usando detalles del authentication si se propaga la excepción)
+            if (authentication.getDetails() instanceof Exception ex &&
+                ex.getClass().getSimpleName().equalsIgnoreCase("ExpiredJwtException")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "JWT expired"));
+            }
 
-        Map<String, Object> result = new HashMap<>();
-        logger.info("[SAML] authentication: {}", authentication);
+            Map<String, Object> result = new HashMap<>();
+            logger.info("[SAML] authentication: {}", authentication);
 
-        String email = authentication.getPrincipal().toString();
-        ScimUser scimUser = userAuthUtils.getScimUserByEmail(email);
-
-        if (scimUser != null) {
-            result.put("email", email);
-            result.put("userName", scimUser.getUserName());
-            result.put("employeeNumber", scimUser.getEmployeeNumber());
-            result.put("department", scimUser.getDepartment());
-            result.put("displayName", scimUser.getDisplayName());
-            result.put("firstName", scimUser.getFirstName());      
-            result.put("lastName", scimUser.getLastName());
-            result.put("userType", scimUser.getUserType());
-            result.put("active", scimUser.getActive() != null ? scimUser.getActive() : true);
-            result.put("admin", scimUser.getAdmin() != null ? scimUser.getAdmin() : "false");
-            result.put("roles", scimUser.getRoles() != null ? scimUser.getRoles() : List.of());
-            // Si tienes otros atributos SAML, puedes agregarlos aquí   
-            result.put("id", scimUser.getId());
-            scimUser.syncNameFromFirstLast(); // Asegura que el nombre esté sincron
-            result.put("name", scimUser.getName() != null ? scimUser.getName() : new ScimUser.Name());
-            result.put("schemas", scimUser.getSchemas() != null ? scimUser.getSchemas() : List.of("urn:ietf:params:scim:schemas:core:2.0:User"));
-            // Si tienes otros atributos SAML, puedes agregarlos aquí
-            if (scimUser.getEmails() != null && !scimUser.getEmails().isEmpty()) {
-                result.put("emails", scimUser.getEmails());
+            // Robust principal extraction
+            String email = null;
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof String str) {
+                email = str;
+            } else if (principal instanceof Map<?, ?> claims && claims.containsKey("email")) {
+                email = String.valueOf(claims.get("email"));
             } else {
-                result.put("emails", List.of(new ScimUser.Email(email, true, "work")));
+                email = null;
             }
 
-        } else {
-            result.put("email", email);
-            result.put("userName", null);
-            result.put("employeeNumber", null);
-            result.put("department", null);
-        }
+            ScimUser scimUser = (email != null) ? userAuthUtils.getScimUserByEmail(email) : null;
 
-        // ...existing code for logging and extracting other details...
-        if (authentication != null) {
-            logger.info("[SAML] principal: {}",email);
-            logger.info("[SAML] details: {}", authentication.getDetails());
-            result.put("principal", email);
-            result.put("authorities", authentication.getAuthorities());
+            if (scimUser != null) {
+                result.put("email", email);
+                result.put("userName", scimUser.getUserName());
+                result.put("employeeNumber", scimUser.getEmployeeNumber());
+                result.put("department", scimUser.getDepartment());
+                result.put("displayName", scimUser.getDisplayName());
+                result.put("firstName", scimUser.getFirstName());
+                result.put("lastName", scimUser.getLastName());
+                result.put("userType", scimUser.getUserType());
+                result.put("active", scimUser.getActive() != null ? scimUser.getActive() : true);
+                result.put("group", scimUser.getGroup() != null ? scimUser.getGroup() : List.of());
+                result.put("id", scimUser.getId());
+                scimUser.syncNameFromFirstLast();
+                result.put("name", scimUser.getName() != null ? scimUser.getName() : new ScimUser.Name());
+                result.put("schemas", scimUser.getSchemas() != null ? scimUser.getSchemas() : List.of("urn:ietf:params:scim:schemas:core:2.0:User"));
+                if (scimUser.getEmails() != null && !scimUser.getEmails().isEmpty()) {
+                    result.put("emails", scimUser.getEmails());
+                } else if (email != null) {
+                    result.put("emails", List.of(new ScimUser.Email(email, true, "work")));
+                }
+            } else {
+                result.put("email", email);
+                result.put("userName", null);
+                result.put("employeeNumber", null);
+                result.put("department", null);
+            }
 
-            if (authentication instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken token) {
-                Object details = token.getDetails();
-                if (details instanceof String emailToken) {
-                    result.put("email_from_token", emailToken);
+            // ...existing code for logging and extracting other details...
+            if (authentication != null) {
+                logger.info("[SAML] principal: {}", email);
+                logger.info("[SAML] details: {}", authentication.getDetails());
+                result.put("principal", email);
+                result.put("authorities", authentication.getAuthorities());
+
+                if (authentication instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken token) {
+                    Object details = token.getDetails();
+                    if (details instanceof String emailToken) {
+                        result.put("email_from_token", emailToken);
+                    }
+                }
+
+                if (principal instanceof Map<?, ?> claims) {
+                    for (Map.Entry<?, ?> entry : claims.entrySet()) {
+                        result.put(String.valueOf(entry.getKey()), entry.getValue());
+                    }
+                }
+                if (authentication.getDetails() instanceof Map<?, ?> details) {
+                    for (Map.Entry<?, ?> entry : details.entrySet()) {
+                        result.put(String.valueOf(entry.getKey()), entry.getValue());
+                    }
                 }
             }
-
-            if (authentication.getPrincipal() instanceof Map) {
-                Map<?, ?> claims = (Map<?, ?>) authentication.getPrincipal();
-                for (Map.Entry<?, ?> entry : claims.entrySet()) {
-                    result.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-            if (authentication.getDetails() instanceof Map) {
-                Map<?, ?> details = (Map<?, ?>) authentication.getDetails();
-                for (Map.Entry<?, ?> entry : details.entrySet()) {
-                    result.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-        }
-        // Detecta si el JWT tiene el claim "authType" y lo agrega al resultado
-        if (authentication.getPrincipal() instanceof Map) {
-            Map<?, ?> claims = (Map<?, ?>) authentication.getPrincipal();
-            if (claims.containsKey("authType")) {
+            // Detecta si el JWT tiene el claim "authType" y lo agrega al resultado
+            if (principal instanceof Map<?, ?> claims && claims.containsKey("authType")) {
                 result.put("authType", claims.get("authType"));
             }
+            logger.info("[SAML] result: {}", result);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            logger.error("Error in /api/user endpoint: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Internal server error", "message", ex.getMessage()));
         }
-        logger.info("[SAML] result: {}", result);
-        return ResponseEntity.ok(result);
     }
 }

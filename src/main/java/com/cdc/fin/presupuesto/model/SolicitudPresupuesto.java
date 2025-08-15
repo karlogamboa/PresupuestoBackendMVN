@@ -16,7 +16,6 @@ public class SolicitudPresupuesto {
     private String solicitante;
     private String numeroEmpleado;
     private String correo;
-    private String cecos;
     private String departamento;
     private String subDepartamento;
     private String centroCostos;
@@ -100,14 +99,6 @@ public class SolicitudPresupuesto {
         this.correo = correo;
     }
 
-    public String getCecos() {
-        return cecos;
-    }
-
-    public void setCecos(String cecos) {
-        this.cecos = cecos;
-    }
-
     public String getDepartamento() {
         return departamento;
     }
@@ -129,6 +120,15 @@ public class SolicitudPresupuesto {
     }
 
     public void setCentroCostos(String centroCostos) {
+        
+        // Normaliza para guardar solo los números antes del guion
+        if (centroCostos != null && centroCostos.contains("-")) {
+            String[] parts = centroCostos.split("-", 2);
+            if (parts.length > 0 && parts[0].trim().matches("\\d+")) {
+                this.centroCostos = parts[0].trim();
+                return;
+            }
+        }
         this.centroCostos = centroCostos;
     }
 

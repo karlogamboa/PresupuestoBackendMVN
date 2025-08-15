@@ -50,7 +50,19 @@ public class AcsHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
             // Procesa SAMLResponse, genera JWT y redirige al frontend
             Response samlResponse = decodeAndParseSamlResponse(samlResponseBase64);
             String nameId = extractNameId(samlResponse);
+            logger.debug("SAMLResponse decoded and parsed successfully");
+            logger.debug("Extracted NameID: {}", nameId);
 
+            if (nameId == null || nameId.isEmpty()) {
+                logger.warn("NameID extraction failed, redirecting to /login?error");
+                Map<String, String> errorHeaders = new HashMap<>();
+                errorHeaders.put("Location", frontEndUrl + "/login?error");
+                errorHeaders.put("Access-Control-Allow-Origin", corsAllowedOrigins);
+                errorHeaders.put("Access-Control-Allow-Credentials", "true");
+                return new APIGatewayProxyResponseEvent()
+                    .withStatusCode(302)
+                    .withHeaders(errorHeaders);
+            }
             // ...JWT y redirección igual que antes...
             Algorithm algorithm = Algorithm.HMAC256(jwtSecret);
             String token = JWT.create()

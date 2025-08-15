@@ -69,7 +69,7 @@ El sistema está diseñado para integrarse con AWS, utilizando servicios como Dy
     }
   ],
   "active": true,
-  "roles": ["string"]
+  "group": ["string"]
 }
 ```
 
@@ -136,8 +136,8 @@ Asegúrate de que el navegador envíe las cookies en las solicitudes a endpoints
 
 - **CORS:** La configuración permite credenciales y todos los headers/métodos necesarios.
 - **Autenticación:** Los endpoints protegidos requieren que el usuario esté autenticado (cookie de sesión SAML válida).
-- **Permisos:** El backend valida los roles del usuario antes de permitir acceso a endpoints protegidos.
-- **Headers:** Los headers de autenticación y usuario (`Authorization`, `x-user-id`, `x-user-roles`, etc) deben estar presentes y correctos en las solicitudes.
+- **Permisos:** El backend valida los group del usuario antes de permitir acceso a endpoints protegidos.
+- **Headers:** Los headers de autenticación y usuario (`Authorization`, etc) deben estar presentes y correctos en las solicitudes.
 
 Para debug, revisa los logs del backend para confirmar que las cookies de sesión SAML y los headers se reciben correctamente.
 
@@ -207,9 +207,9 @@ curl -o template.csv http://localhost:8080/api/usuarios/csv-template
 
 ### 2. Preparar archivo CSV
 ```csv
-email,nombre,numeroEmpleado,role,departamento,area,activo
-juan.perez@empresa.com,Juan Pérez,EMP001,User,IT,Sistemas,true
-admin@empresa.com,Administrador,EMP002,Admin,Administración,Finanzas,true
+nombreDepartamento,subDepartamento,ceco,presupuestoDefault
+IT,Sistemas,CECO001,100000
+Administración,Finanzas,CECO002,200000
 ```
 
 ### 3. Importar usuarios
@@ -313,12 +313,13 @@ Este documento será actualizado conforme el sistema evoluciona y se añaden nue
     *(o el valor configurado en la propiedad `scim.token`)*
 
 - **Atributos soportados para usuarios:**  
-  - `userName`
-  - `name.given`
-  - `name.family`
-  - `emails.value`
-  - `active`
-  - `roles`
+  - `email`
+  - `firstName`
+  - `lastName`
+  - `employeeNumber`
+  - `displayName`
+  - `department`
+  - `group`
 
 - **Atributos soportados para grupos:**  
   - `displayName`
@@ -426,3 +427,71 @@ Este backend está diseñado para ejecutarse en AWS Lambda detrás de API Gatewa
 2. Lambda procesa la respuesta SAML, valida el Audience y genera un JWT.
 3. El usuario es redirigido al frontend con el JWT como parámetro o cookie.
 4. El backend valida el JWT en cada petición protegida.
+
+## Permisos IAM requeridos para AWS Lambda
+
+Asegúrate de que la función Lambda tenga una política IAM similar a la siguiente para operar correctamente con DynamoDB, SES, SSM Parameter Store y CloudWatch Logs:
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:Scan",
+				"dynamodb:GetItem",
+				"dynamodb:PutItem",
+				"dynamodb:UpdateItem",
+				"dynamodb:DeleteItem",
+				"dynamodb:Query"
+			],
+			"Resource": "arn:aws:dynamodb:us-east-2:470514032204:table/fin-dynamodb-qa-presupuesto-*"
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"ses:SendEmail",
+				"ses:SendRawEmail"
+			],
+			"Resource": "*"
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"ssm:GetParameter",
+				"ssm:GetParameters",
+				"ssm:GetParametersByPath"
+			],
+			"Resource": "arn:aws:ssm:us-east-2:470514032204:parameter/fin/qa/*"
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"logs:CreateLogGroup",
+				"logs:CreateLogStream",
+				"logs:PutLogEvents"
+			],
+			"Resource": "arn:aws:logs:us-east-2:*:*"
+		}
+	]
+}
+```
+
+Incluye esta política en el rol IAM de tu función Lambda para asegurar el acceso correcto a los servicios AWS utilizados por el backend.
+
+## Ejecución del script de parámetros en AWS CloudShell
+
+Para crear los parámetros necesarios en AWS SSM Parameter Store usando el script `create-aws-parameters.sh`, sigue estos pasos en AWS CloudShell:
+
+1. Sube el archivo `create-aws-parameters.sh` a tu directorio en CloudShell.
+2. Da permisos de ejecución al script:
+   ```bash
+   chmod +x create-aws-parameters.sh
+   ```
+3. Ejecuta el script:
+   ```bash
+   ./create-aws-parameters.sh
+   ```
+
+Asegúrate de que tu usuario tenga permisos suficientes para crear parámetros en SSM.

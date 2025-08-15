@@ -63,7 +63,14 @@ public class CategoriaGastoService {
      * Si DynamoDB Enhanced Client no está configurado, usa saveAll.
      */
     private void batchInsertCategorias(List<CategoriaGasto> categorias) {
-        if (dynamoDbEnhancedClient == null || categoriaGastoTable == null) {
+        logger.info("Intentando guardar {} categorías en DynamoDB...", categorias.size());
+        if (dynamoDbEnhancedClient == null) {
+            logger.warn("DynamoDbEnhancedClient no está configurado. Usando saveAll en repositorio.");
+            categoriaGastoRepository.saveAll(categorias);
+            return;
+        }
+        if (categoriaGastoTable == null) {
+            logger.warn("categoriaGastoTable no está configurada. Usando saveAll en repositorio.");
             categoriaGastoRepository.saveAll(categorias);
             return;
         }
@@ -80,7 +87,12 @@ public class CategoriaGastoService {
                 software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
                     software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
                 batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
-                dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+                try {
+                    dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+                    logger.info("Batch insert exitoso para {} categorías.", batch.size());
+                } catch (Exception e) {
+                    logger.error("Error al guardar batch en DynamoDB: {}", e.getMessage(), e);
+                }
             }
         } catch (software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException e) {
             logger.error("La tabla DynamoDB no existe o el nombre es incorrecto: {}", e.getMessage());
@@ -89,6 +101,7 @@ public class CategoriaGastoService {
     }
 
     public Map<String, Object> importCategoriasFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
+        logger.info("Iniciando importación de categorías desde CSV...");
         List<CategoriaGasto> categorias = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;
@@ -176,21 +189,24 @@ public class CategoriaGastoService {
             }
             
             // If replace all is true, delete all existing categorias first
-            if (replaceAll && !categoriasSinDuplicados.isEmpty()) {
+            if (replaceAll) {
+                logger.info("Eliminando todas las categorías existentes antes de importar.");
                 categoriaGastoRepository.deleteAll();
             }
-            
         } catch (IOException e) {
-            logger.error("Error reading CSV file: {}", e.getMessage());
+            logger.error("Error leyendo el archivo CSV: {}", e.getMessage(), e);
             throw new IOException("Error reading CSV file: " + e.getMessage(), e);
         } catch (CsvException e) {
-            logger.error("Error parsing CSV file: {}", e.getMessage());
+            logger.error("Error parseando el archivo CSV: {}", e.getMessage(), e);
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
 
         // Inserta en lote solo si hay al menos un registro válido
         if (!categoriasSinDuplicados.isEmpty()) {
+            logger.info("Guardando {} categorías importadas...", categoriasSinDuplicados.size());
             batchInsertCategorias(categoriasSinDuplicados);
+        } else {
+            logger.warn("No hay categorías válidas para guardar.");
         }
         if (!idsDuplicados.isEmpty()) {
             errors.add("Advertencia: Se omitieron " + idsDuplicados.size() + " categorías duplicadas por ID. IDs duplicados: " + String.join(", ", idsDuplicados));
@@ -209,7 +225,7 @@ public class CategoriaGastoService {
             result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
         }
         
-        logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
+        logger.info("Importación de CSV de categorías completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
         
         return result;
     }

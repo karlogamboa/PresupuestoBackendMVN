@@ -69,8 +69,12 @@ public class ScimUserRepository {
     @Autowired(required = false)
     private DynamoDbClient dynamoDbClient;
 
-    @Value("${aws.dynamodb.table.scim-users:}")
     private String usersTable;
+
+    @Autowired
+    public ScimUserRepository(@Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
+        this.usersTable = tablePrefix + "scim-users";
+    }
 
     // Crear usuario (POST /Users)
     public ScimUser createUser(ScimUser user) throws JsonProcessingException {
@@ -102,8 +106,6 @@ public class ScimUserRepository {
                 item.put("userType", AttributeValue.builder().s(user.getUserType()).build());
             if (user.getDisplayName() != null)
                 item.put("displayName", AttributeValue.builder().s(user.getDisplayName()).build());
-            if (user.getAdmin() != null)
-                item.put("admin", AttributeValue.builder().s(user.getAdmin()).build());
             logger.info("createUser DynamoDB item: {}", item);
             dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(usersTable)
@@ -151,8 +153,8 @@ public class ScimUserRepository {
                 user.setUserType(item.get("userType").s());
             if (item.containsKey("displayName"))
                 user.setDisplayName(item.get("displayName").s());
-            if (item.containsKey("admin"))
-                user.setAdmin(item.get("admin").s());
+            if (item.containsKey("group"))
+                user.setGroup(List.of(item.get("group").s()));
             ensureScimCompliance(user);
             user.setUserType(getUserRoleType(user));
         }
@@ -163,6 +165,7 @@ public class ScimUserRepository {
     // Actualizar usuario (PUT /Users/{id})
     public ScimUser replaceUser(String id, ScimUser user) throws JsonProcessingException {
         logger.info("replaceUser called for id: {}, user: {}", id, user);
+        logger.debug("[SCIM][replaceUser] Entrando a replaceUser con id={}, user={}", id, user);
         user.setUserType(getUserRoleType(user));
         user.setId(id);
         ensureScimCompliance(user);
@@ -189,38 +192,43 @@ public class ScimUserRepository {
                 item.put("userType", AttributeValue.builder().s(user.getUserType()).build());
             if (user.getDisplayName() != null)
                 item.put("displayName", AttributeValue.builder().s(user.getDisplayName()).build());
-            if (user.getAdmin() != null)
-                item.put("admin", AttributeValue.builder().s(user.getAdmin()).build());
             logger.info("replaceUser DynamoDB item: {}", item);
+            logger.debug("[SCIM][replaceUser] DynamoDB putItem: {}", item);
             dynamoDbClient.putItem(PutItemRequest.builder()
                 .tableName(usersTable)
                 .item(item)
                 .build());
+        } else {
+            logger.debug("[SCIM][replaceUser] DynamoDB client o tabla no configurados: dynamoDbClient={}, usersTable={}", dynamoDbClient, usersTable);
         }
         logger.info("replaceUser finished for id: {}", id);
+        logger.debug("[SCIM][replaceUser] Finalizando replaceUser para id={}", id);
         return user;
     }
 
     // Desactivar/reactivar usuario (PATCH /Users/{id})
     public ScimUser patchUser(String id, ScimUser patch) throws JsonProcessingException {
         logger.info("patchUser called for id: {}, patch: {}", id, patch);
+        logger.debug("[SCIM][patchUser] Entrando a patchUser con id={}, patch={}", id, patch);
         ScimUser user = getUser(id);
+        logger.debug("[SCIM][patchUser] Usuario obtenido de getUser: {}", user);
         if (user != null) {
             if (patch.getActive() != null) user.setActive(patch.getActive());
             if (patch.getUserName() != null) user.setUserName(patch.getUserName());
             if (patch.getName() != null) user.setName(patch.getName());
             if (patch.getEmails() != null) user.setEmails(patch.getEmails());
-            if (patch.getRoles() != null) user.setRoles(patch.getRoles());
+            if (patch.getGroup() != null) user.setGroup(patch.getGroup());
             // Campos faltantes SAML/enterprise
             if (patch.getEmployeeNumber() != null) user.setEmployeeNumber(patch.getEmployeeNumber());
             if (patch.getUserType() != null) user.setUserType(patch.getUserType());
             if (patch.getDepartment() != null) user.setDepartment(patch.getDepartment());
             if (patch.getDisplayName() != null) user.setDisplayName(patch.getDisplayName());
-            if (patch.getAdmin() != null) user.setAdmin(patch.getAdmin());
             ensureScimCompliance(user);
             logger.info("patchUser finished for id: {}", id);
+            logger.debug("[SCIM][patchUser] Usuario después de aplicar patch: {}", user);
             return replaceUser(id, user);
         }
+        logger.debug("[SCIM][patchUser] Usuario no encontrado para id={}", id);
         return null;
     }
 
@@ -266,8 +274,8 @@ public class ScimUserRepository {
                     user.setDepartment(item.get("department").s());
                 if (item.containsKey("displayName"))
                     user.setDisplayName(item.get("displayName").s());
-                if (item.containsKey("admin"))
-                    user.setAdmin(item.get("admin").s());
+                if (item.containsKey("group"))
+                    user.setGroup(List.of(item.get("group").s()));
                 ensureScimCompliance(user);
                 // Establece el tipo de usuario según roles
                 user.setUserType(getUserRoleType(user));
@@ -324,8 +332,8 @@ public class ScimUserRepository {
                         user.setDepartment(item.get("department").s());
                     if (item.containsKey("displayName"))
                         user.setDisplayName(item.get("displayName").s());
-                    if (item.containsKey("admin"))
-                        user.setAdmin(item.get("admin").s());
+                    if (item.containsKey("group"))
+                        user.setGroup(List.of(item.get("group").s()));
                     ensureScimCompliance(user);
                     // Establece el tipo de usuario según roles
                     user.setUserType(getUserRoleType(user));
@@ -370,50 +378,45 @@ public class ScimUserRepository {
     // Crear usuario (POST /Users)
     public ScimUser createUserFromJson(String body) throws JsonProcessingException {
         logger.info("createUserFromJson called with body: {}", body);
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode root = mapper.readTree(body);
-
-            ScimUser user = mapper.treeToValue(root, ScimUser.class);
-
-            // Extraer employeeNumber y department del objeto raíz si existen
-            if (root.has("employeeNumber")) {
-                user.setEmployeeNumber(root.get("employeeNumber").asText());
-                logger.info("employeeNumber (root): {}", root.get("employeeNumber").asText());
-            }
-            if (root.has("department")) {
-                user.setDepartment(root.get("department").asText());
-                logger.info("department (root): {}", root.get("department").asText());
-            }
-
-            // Extraer de la extensión enterprise si existen
-            JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
-            if (enterpriseNode != null) {
-                if (enterpriseNode.has("employeeNumber")) {
-                    user.setEmployeeNumber(enterpriseNode.get("employeeNumber").asText());
-                    logger.info("employeeNumber (enterprise): {}", enterpriseNode.get("employeeNumber").asText());
-                }
-                if (enterpriseNode.has("department")) {
-                    user.setDepartment(enterpriseNode.get("department").asText());
-                    logger.info("department (enterprise): {}", enterpriseNode.get("department").asText());
-                }
-            }
-            logger.info("createUserFromJson finished for userId: {}, employeeNumber: {}, department: {}",
-                user.getId(), user.getEmployeeNumber(), user.getDepartment());
-            return createUser(user);
-        } catch (Exception e) {
-            logger.error("Error in createUserFromJson", e);
-            throw e;
-        }
-    }
-
-    public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
-        logger.info("replaceUserFromJson called with id: {}, body: {}", id, body);
         ObjectMapper mapper = new ObjectMapper();
         JsonNode root = mapper.readTree(body);
+        logger.debug("[SCIM][createUserFromJson] JSON recibido: {}", root);
 
         ScimUser user = mapper.treeToValue(root, ScimUser.class);
-        logger.info("[SCIM] Parsed user: {}", user);
+        logger.debug("[SCIM][createUserFromJson] Usuario parseado: {}", user);
+
+        // Verifica campos complejos
+        if (root.has("name")) logger.debug("[SCIM][createUserFromJson] Campo 'name' recibido: {}", root.get("name"));
+        if (root.has("emails")) logger.debug("[SCIM][createUserFromJson] Campo 'emails' recibido: {}", root.get("emails"));
+        if (root.has("phoneNumbers")) logger.debug("[SCIM][createUserFromJson] Campo 'phoneNumbers' recibido: {}", root.get("phoneNumbers"));
+        if (root.has("addresses")) logger.debug("[SCIM][createUserFromJson] Campo 'addresses' recibido: {}", root.get("addresses"));
+        if (root.has("groups")) logger.debug("[SCIM][createUserFromJson] Campo 'groups' recibido: {}", root.get("groups"));
+        if (root.has("group")) logger.debug("[SCIM][createUserFromJson] Campo 'group' recibido: {}", root.get("group"));
+
+        // Corrige el parseo de grupos si viene como array
+        if (root.has("groups") && root.get("groups").isArray()) {
+            List<String> groupList = new ArrayList<>();
+            for (JsonNode g : root.get("groups")) {
+                if (g.has("value")) {
+                    groupList.add(g.get("value").asText());
+                } else if (g.isTextual()) {
+                    groupList.add(g.asText());
+                }
+            }
+            if (!groupList.isEmpty()) {
+                user.setGroup(groupList);
+                logger.debug("[SCIM][createUserFromJson] Asignando grupos desde 'groups': {}", groupList);
+            }
+        } else if (root.has("group") && root.get("group").isArray()) {
+            List<String> groupList = new ArrayList<>();
+            for (JsonNode g : root.get("group")) {
+                if (g.isTextual()) groupList.add(g.asText());
+            }
+            if (!groupList.isEmpty()) {
+                user.setGroup(groupList);
+                logger.debug("[SCIM][createUserFromJson] Asignando grupos desde 'group': {}", groupList);
+            }
+        }
 
         // Extraer employeeNumber y department del objeto raíz si existen
         if (root.has("employeeNumber")) {
@@ -428,6 +431,7 @@ public class ScimUserRepository {
         // Extraer de la extensión enterprise si existen
         JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
         if (enterpriseNode != null) {
+            logger.debug("[SCIM][createUserFromJson] Extension enterprise recibida: {}", enterpriseNode);
             if (enterpriseNode.has("employeeNumber")) {
                 user.setEmployeeNumber(enterpriseNode.get("employeeNumber").asText());
                 logger.info("employeeNumber (enterprise): {}", enterpriseNode.get("employeeNumber").asText());
@@ -436,9 +440,95 @@ public class ScimUserRepository {
                 user.setDepartment(enterpriseNode.get("department").asText());
                 logger.info("department (enterprise): {}", enterpriseNode.get("department").asText());
             }
+            if (enterpriseNode.has("manager")) {
+                logger.debug("[SCIM][createUserFromJson] Manager recibido: {}", enterpriseNode.get("manager"));
+                // Si tienes un campo manager en ScimUser, asígnalo aquí
+            }
+        } else {
+            logger.debug("[SCIM][createUserFromJson] No se encontró extensión enterprise en el JSON");
         }
+
+        logger.info("createUserFromJson finished for userId: {}, employeeNumber: {}, department: {}",
+            user.getId(), user.getEmployeeNumber(), user.getDepartment());
+        logger.debug("[SCIM][createUserFromJson] Usuario final: {}", user);
+        return createUser(user);
+    }
+
+    public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
+        logger.info("replaceUserFromJson called with id: {}, body: {}", id, body);
+        logger.debug("[SCIM][replaceUserFromJson] JSON recibido: {}", body);
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(body);
+
+        ScimUser user = mapper.treeToValue(root, ScimUser.class);
+        logger.debug("[SCIM][replaceUserFromJson] Usuario parseado: {}", user);
+
+        // Verifica campos complejos
+        if (root.has("name")) logger.debug("[SCIM][replaceUserFromJson] Campo 'name' recibido: {}", root.get("name"));
+        if (root.has("emails")) logger.debug("[SCIM][replaceUserFromJson] Campo 'emails' recibido: {}", root.get("emails"));
+        if (root.has("phoneNumbers")) logger.debug("[SCIM][replaceUserFromJson] Campo 'phoneNumbers' recibido: {}", root.get("phoneNumbers"));
+        if (root.has("addresses")) logger.debug("[SCIM][replaceUserFromJson] Campo 'addresses' recibido: {}", root.get("addresses"));
+        if (root.has("groups")) logger.debug("[SCIM][replaceUserFromJson] Campo 'groups' recibido: {}", root.get("groups"));
+        if (root.has("group")) logger.debug("[SCIM][replaceUserFromJson] Campo 'group' recibido: {}", root.get("group"));
+
+        // Corrige el parseo de grupos si viene como array
+        if (root.has("groups") && root.get("groups").isArray()) {
+            List<String> groupList = new ArrayList<>();
+            for (JsonNode g : root.get("groups")) {
+                if (g.has("value")) {
+                    groupList.add(g.get("value").asText());
+                } else if (g.isTextual()) {
+                    groupList.add(g.asText());
+                }
+            }
+            if (!groupList.isEmpty()) {
+                user.setGroup(groupList);
+                logger.debug("[SCIM][replaceUserFromJson] Asignando grupos desde 'groups': {}", groupList);
+            }
+        } else if (root.has("group") && root.get("group").isArray()) {
+            List<String> groupList = new ArrayList<>();
+            for (JsonNode g : root.get("group")) {
+                if (g.isTextual()) groupList.add(g.asText());
+            }
+            if (!groupList.isEmpty()) {
+                user.setGroup(groupList);
+                logger.debug("[SCIM][replaceUserFromJson] Asignando grupos desde 'group': {}", groupList);
+            }
+        }
+
+        // Extraer employeeNumber y department del objeto raíz si existen
+        if (root.has("employeeNumber")) {
+            user.setEmployeeNumber(root.get("employeeNumber").asText());
+            logger.info("employeeNumber (root): {}", root.get("employeeNumber").asText());
+        }
+        if (root.has("department")) {
+            user.setDepartment(root.get("department").asText());
+            logger.info("department (root): {}", root.get("department").asText());
+        }
+
+        // Extraer de la extensión enterprise si existen
+        JsonNode enterpriseNode = root.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+        if (enterpriseNode != null) {
+            logger.debug("[SCIM][replaceUserFromJson] Extension enterprise recibida: {}", enterpriseNode);
+            if (enterpriseNode.has("employeeNumber")) {
+                user.setEmployeeNumber(enterpriseNode.get("employeeNumber").asText());
+                logger.info("employeeNumber (enterprise): {}", enterpriseNode.get("employeeNumber").asText());
+            }
+            if (enterpriseNode.has("department")) {
+                user.setDepartment(enterpriseNode.get("department").asText());
+                logger.info("department (enterprise): {}", enterpriseNode.get("department").asText());
+            }
+            if (enterpriseNode.has("manager")) {
+                logger.debug("[SCIM][replaceUserFromJson] Manager recibido: {}", enterpriseNode.get("manager"));
+                // Si tienes un campo manager en ScimUser, asígnalo aquí
+            }
+        } else {
+            logger.debug("[SCIM][replaceUserFromJson] No se encontró extensión enterprise en el JSON");
+        }
+
         logger.info("replaceUserFromJson finished for id: {}, employeeNumber: {}, department: {}",
             id, user.getEmployeeNumber(), user.getDepartment());
+        logger.debug("[SCIM][replaceUserFromJson] Usuario final: {}", user);
         return replaceUser(id, user);
     }
 
@@ -449,18 +539,22 @@ public class ScimUserRepository {
      * Si no contiene ninguno, retorna "UNKNOWN".
      */
     public String getUserRoleType(ScimUser user) {
-        if (user.getRoles() != null) {
-            for (String role : user.getRoles()) {
-                if (role == null) continue;
-                String r = role.trim().toUpperCase();
-                // Check for exact match or contains
-                if (r.equals("ADMIN") || r.contains("ADMIN") || r.equals("PRESUPUESTO_ADMIN")) {
-                    return "ADMIN";
+        if (user.getGroup() != null) {
+            // Prioriza ADMIN sobre USER si ambos están presentes
+            boolean isAdmin = false;
+            boolean isUser = false;
+            for (String group : user.getGroup()) {
+                if (group == null) continue;
+                String g = group.trim().toUpperCase();
+                if (g.equals("CDC_APP_PRES_ADMIN") || g.contains("ADMIN") || g.equals("PRESUPUESTO_ADMIN")) {
+                    isAdmin = true;
                 }
-                if (r.equals("USER") || r.contains("USER") || r.equals("PRESUPUESTO_USER")) {
-                    return "USER";
+                if (g.equals("CDC_APP_PRES_USER") || g.contains("USER") || g.equals("PRESUPUESTO_USER")) {
+                    isUser = true;
                 }
             }
+            if (isAdmin) return "ADMIN";
+            if (isUser) return "USER";
         }
         return "UNKNOWN";
     }

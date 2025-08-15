@@ -15,8 +15,12 @@ public class ScimGroupRepository {
     @Autowired(required = false)
     private DynamoDbClient dynamoDbClient;
 
-    @Value("${aws.dynamodb.table.scim-groups:}")
     private String groupsTable;
+
+    @Autowired
+    public ScimGroupRepository(@Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
+        this.groupsTable = tablePrefix + "scim-groups";
+    }
 
     public String listGroups() {
         // Implementa consulta a DynamoDB si lo deseas, aquí solo retorna vacío

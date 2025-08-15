@@ -82,22 +82,6 @@ public class SolicitudPresupuestoService {
         
         SolicitudPresupuesto savedSolicitud = repository.save(solicitud);
         
-        // Enviar notificación por email (opcional - no fallar si hay error)
-        try {
-            // Aquí podrías obtener el email del aprobador desde una configuración o base de datos
-            String approverEmail = "aprobador@cdc.com"; // Esto debería venir de configuración
-            emailService.sendBudgetRequestNotification(
-                userEmail,
-                approverEmail,
-                solicitudId,
-                userName,
-                solicitud.getMontoSubtotal()
-            );
-        } catch (Exception e) {
-            // Log el error pero no fallar la creación de la solicitud
-            logger.error("Error sending email notification: {}", e.getMessage(), e);
-        }
-        
         return savedSolicitud;
     }
 
@@ -130,26 +114,6 @@ public class SolicitudPresupuestoService {
             existing.setActualizadoPor(userEmail);
             
             SolicitudPresupuesto updatedSolicitud = repository.save(existing);
-            
-            // Enviar notificación automática si el estatus cambió
-            if (!nuevoEstatus.equals(oldStatus)) {
-                try {
-                    // Enviar notificación al solicitante original
-                    String requesterEmail = existing.getCreadoPor();
-                    emailService.sendBudgetStatusNotification(
-                        userEmail,
-                        requesterEmail,
-                        solicitudId,
-                        nuevoEstatus,
-                        comentarios
-                    );
-                    
-                    // Debug log eliminado
-                } catch (Exception e) {
-                    // Log el error pero no fallar la actualización
-                    logger.error("Error sending status notification: {}", e.getMessage(), e);
-                }
-            }
             
             return Optional.of(updatedSolicitud);
         } else {

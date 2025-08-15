@@ -122,13 +122,18 @@ public class ScimController {
         @PathVariable String id,
         @RequestBody String body // <-- Recibe el body como String
     ) {
+        logger.debug("[SCIM][ScimController] PUT /Users/{} body={}", id, body);
         if (!isScimAuthorized(authHeader)) {
+            logger.debug("[SCIM][ScimController] No autorizado para editar usuario id={}", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         try {
             ScimUser result = scimUserService.replaceUserFromJson(id, body); // <-- Usa el método correcto
+            logger.debug("[SCIM][ScimController] Resultado de replaceUserFromJson: {}", result);
             return ResponseEntity.ok(result); // HttpStatus.OK
         } catch (Exception e) {
+            logger.error("Error actualizando usuario SCIM", e);
+            logger.debug("[SCIM][ScimController] Error en replaceUser: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -142,15 +147,19 @@ public class ScimController {
         @RequestHeader(value = "Authorization", required = false) String authHeader,
         @PathVariable String id,
         @RequestBody ScimUser patch) {
+        logger.debug("[SCIM][ScimController] PATCH /Users/{} patch={}", id, patch);
         if (!isScimAuthorized(authHeader)) {
+            logger.debug("[SCIM][ScimController] No autorizado para patch usuario id={}", id);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         try {
             ScimUser result = scimUserService.patchUser(id, patch);
             logger.info("SCIM response to Okta (patchUser): {}", new ObjectMapper().writeValueAsString(result));
+            logger.debug("[SCIM][ScimController] Resultado de patchUser: {}", result);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             logger.error("Error modificando usuario SCIM", e);
+            logger.debug("[SCIM][ScimController] Error en patchUser: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }

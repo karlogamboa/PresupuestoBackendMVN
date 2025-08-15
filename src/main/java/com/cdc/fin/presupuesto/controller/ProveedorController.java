@@ -24,9 +24,17 @@ public class ProveedorController {
     private ProveedorService proveedorService;
 
     @GetMapping
-    public ResponseEntity<List<Proveedor>> getAllProveedores() {
-        List<Proveedor> proveedores = proveedorService.getAllProveedores();
-        return ResponseEntity.ok(proveedores);
+    public ResponseEntity<Map<String, Object>> getProveedores(
+            @RequestParam(value = "nombre", required = false) String nombre,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "50") int size) {
+        Map<String, Object> result;
+        if (nombre != null && nombre.trim().length() >= 3) {
+            result = proveedorService.getProveedoresPaginatedByNombre(nombre.trim(), page, size);
+        } else {
+            result = proveedorService.getProveedoresPaginated(page, size);
+        }
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/import-csv")

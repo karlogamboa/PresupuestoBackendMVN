@@ -15,9 +15,9 @@ public class UserAuthUtils {
     private final DynamoDbClient dynamoDbClient;
     private final String usersTable;
 
-    public UserAuthUtils(DynamoDbClient dynamoDbClient, @Value("${aws.dynamodb.table.scim-users:}") String usersTable) {
+    public UserAuthUtils(DynamoDbClient dynamoDbClient, @Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
         this.dynamoDbClient = dynamoDbClient;
-        this.usersTable = usersTable;
+        this.usersTable = tablePrefix + "scim-users";
     }
 
     public ScimUser getScimUserByEmail(String email) {
@@ -60,13 +60,11 @@ public class UserAuthUtils {
                     user.setDepartment(item.get("department").s());
                 if (item.containsKey("displayName"))
                     user.setDisplayName(item.get("displayName").s());
-                if (item.containsKey("admin"))
-                    user.setAdmin(item.get("admin").s());
                 // SAML/Group attributes
-                if (item.containsKey("roles")) {
+                if (item.containsKey("group")) {
                     // DynamoDB stores as string, split if needed
-                    String rolesStr = item.get("roles").s();
-                    user.setRoles(java.util.Arrays.asList(rolesStr.split(",")));
+                    String groupStr = item.get("group").s();
+                    user.setGroup(java.util.Arrays.asList(groupStr.split(",")));
                 }
                 return user;
             } catch (Exception e) {

@@ -59,8 +59,14 @@ public class ProveedorService {
      * Falls back to saveAll if DynamoDB Enhanced Client is not configured.
      */
     private void batchInsertProveedores(List<Proveedor> proveedores) {
-        if (dynamoDbEnhancedClient == null || proveedorTable == null) {
-            logger.warn("DynamoDbEnhancedClient or proveedorTable not configured, falling back to saveAll");
+        logger.info("Intentando guardar {} proveedores en DynamoDB...", proveedores.size());
+        if (dynamoDbEnhancedClient == null) {
+            logger.warn("DynamoDbEnhancedClient no está configurado. Usando saveAll en repositorio.");
+            proveedorRepository.saveAll(proveedores);
+            return;
+        }
+        if (proveedorTable == null) {
+            logger.warn("proveedorTable no está configurada. Usando saveAll en repositorio.");
             proveedorRepository.saveAll(proveedores);
             return;
         }
@@ -76,7 +82,12 @@ public class ProveedorService {
             software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.Builder batchWriteBuilder =
                 software.amazon.awssdk.enhanced.dynamodb.model.BatchWriteItemEnhancedRequest.builder();
             batchWriteBuilder.addWriteBatch(writeBatchBuilder.build());
-            dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+            try {
+                dynamoDbEnhancedClient.batchWriteItem(batchWriteBuilder.build());
+                logger.info("Batch insert exitoso para {} proveedores.", batch.size());
+            } catch (Exception e) {
+                logger.error("Error al guardar batch en DynamoDB: {}", e.getMessage(), e);
+            }
         }
     }
 
@@ -87,6 +98,7 @@ public class ProveedorService {
      * @return Map with import summary and errors
      */
     public Map<String, Object> importProveedoresFromCSV(MultipartFile file, boolean replaceAll) throws IOException, CsvException {
+        logger.info("Iniciando importación de proveedores desde CSV...");
         List<String> errors = new ArrayList<>();
         int successCount = 0;
         int errorCount = 0;
@@ -141,22 +153,24 @@ public class ProveedorService {
                 rowNumber++;
             }
 
-            if (replaceAll && !proveedoresExitosos.isEmpty()) {
-                logger.info("Deleting all existing proveedores before import");
+            if (replaceAll) {
+                logger.info("Eliminando todos los proveedores existentes antes de importar.");
                 proveedorRepository.deleteAll();
             }
-
         } catch (IOException e) {
-            logger.error("Error reading CSV file: {}", e.getMessage());
+            logger.error("Error leyendo el archivo CSV: {}", e.getMessage(), e);
             throw new IOException("Error reading CSV file: " + e.getMessage(), e);
         } catch (CsvException e) {
-            logger.error("Error parsing CSV file: {}", e.getMessage());
+            logger.error("Error parseando el archivo CSV: {}", e.getMessage(), e);
             throw new CsvException("Error parsing CSV file: " + e.getMessage());
         }
 
         // Guarda solo los exitosos
         if (!proveedoresExitosos.isEmpty()) {
+            logger.info("Guardando {} proveedores importados...", proveedoresExitosos.size());
             batchInsertProveedores(proveedoresExitosos);
+        } else {
+            logger.warn("No hay proveedores válidos para guardar.");
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -172,7 +186,7 @@ public class ProveedorService {
             result.put("message", String.format("Importación completada exitosamente: %d registros importados.", successCount));
         }
 
-        logger.info("Importación de CSV completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
+        logger.info("Importación de CSV de proveedores completada. Éxito: {}, Errores/Omitidos: {}", successCount, errorCount);
 
         return result;
     }
@@ -185,5 +199,42 @@ public class ProveedorService {
             return record[index] != null ? record[index].trim() : "";
         }
         return "";
+    }
+
+    /**
+     * Paginación de proveedores sin filtro.
+     */
+    public Map<String, Object> getProveedoresPaginated(int page, int size) {
+        List<Proveedor> all = proveedorRepository.findAll();
+        int total = all.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<Proveedor> paged = all.subList(fromIndex, toIndex);
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("proveedores", paged);
+        return result;
+    }
+
+    /**
+     * Paginación de proveedores filtrando por nombre (mínimo 3 letras).
+     */
+    public Map<String, Object> getProveedoresPaginatedByNombre(String nombre, int page, int size) {
+        String nombreLower = nombre.toLowerCase();
+        List<Proveedor> filtered = proveedorRepository.findAll().stream()
+            .filter(p -> p.getNombre() != null && p.getNombre().toLowerCase().contains(nombreLower))
+            .toList();
+        int total = filtered.size();
+        int fromIndex = Math.min(page * size, total);
+        int toIndex = Math.min(fromIndex + size, total);
+        List<Proveedor> paged = filtered.subList(fromIndex, toIndex);
+        Map<String, Object> result = new HashMap<>();
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        result.put("proveedores", paged);
+        return result;
     }
 }

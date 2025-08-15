@@ -13,26 +13,14 @@
             <outputDirectory>java/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <includes>
-                <!-- AWS SDK Dependencies -->
-                <include>software.amazon.awssdk:*</include>
-                <include>com.amazonaws:*</include>
-                <include>com.amazonaws.serverless:*</include>
-                <!-- Spring Framework Dependencies -->
-                <include>org.springframework:*</include>
-                <include>org.springframework.boot:*</include>
-                <include>org.springframework.security:*</include>
-                <!-- Jackson Dependencies -->
+                <!-- Solo incluye lo esencial para tu Lambda -->
+                <include>software.amazon.awssdk:dynamodb*</include>
+                <include>software.amazon.awssdk:ses*</include>
+                <include>org.slf4j:*</include>
+                <include>com.opencsv:*</include>
                 <include>com.fasterxml.jackson.core:*</include>
                 <include>com.fasterxml.jackson.databind:*</include>
-                <include>com.fasterxml.jackson.datatype:*</include>
-                <!-- Logging Dependencies -->
-                <include>ch.qos.logback:*</include>
-                <include>org.slf4j:*</include>
-                <!-- Other common dependencies -->
-                <include>io.jsonwebtoken:*</include>
-                <include>com.opencsv:*</include>
-                <include>org.springdoc:*</include>
-                <include>io.awspring.cloud:*</include>
+                <!-- Elimina starters de Spring Boot, POI, JPA, etc. si no son requeridos en Lambda -->
             </includes>
         </dependencySet>
     </dependencySets>

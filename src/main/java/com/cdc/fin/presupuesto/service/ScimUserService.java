@@ -34,11 +34,15 @@ public class ScimUserService {
 
     // Reemplaza usuario y retorna el objeto ScimUser
     public ScimUser replaceUser(String id, ScimUser user) throws JsonProcessingException {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScimUserService.class);
+        logger.debug("[SCIM][ScimUserService] Entrando a replaceUser con id={}, user={}", id, user);
         return userRepository.replaceUser(id, user);
     }
 
     // Aplica patch y retorna el objeto ScimUser
     public ScimUser patchUser(String id, ScimUser patch) throws JsonProcessingException {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScimUserService.class);
+        logger.debug("[SCIM][ScimUserService] Entrando a patchUser con id={}, patch={}", id, patch);
         return userRepository.patchUser(id, patch);
     }
 
@@ -53,10 +57,14 @@ public class ScimUserService {
     }
 
     public ScimUser replaceUserFromJson(String id, String body) throws JsonProcessingException {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScimUserService.class);
+        logger.debug("[SCIM][ScimUserService] Entrando a replaceUserFromJson con id={}, body={}", id, body);
         return userRepository.replaceUserFromJson(id, body);
     }
 
     public ScimUser createUserFromJson(String body) throws JsonProcessingException {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ScimUserService.class);
+        logger.debug("[SCIM][ScimUserService] Entrando a createUserFromJson con body={}", body);
         return userRepository.createUserFromJson(body);
     }
 }
