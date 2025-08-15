@@ -77,15 +77,22 @@ public class SolicitudPresupuestoController {
             params.remove("page");
             params.remove("size");
 
-            // Llama al servicio/repositorio con filtros dinámicos
-            Page<SolicitudPresupuesto> solicitudesPage = solicitudPresupuestoRepository.findByDynamicFilters(params, PageRequest.of(page, size));
+            // Llama al servicio/repositorio con filtros dinámicos (sin paginación JPA)
+            List<SolicitudPresupuesto> solicitudes = solicitudPresupuestoRepository.findByDynamicFilters(params);
+
+            // Simula paginación en memoria si es necesario
+            int fromIndex = Math.min(page * size, solicitudes.size());
+            int toIndex = Math.min(fromIndex + size, solicitudes.size());
+            List<SolicitudPresupuesto> pageContent = solicitudes.subList(fromIndex, toIndex);
+
+            int totalPages = (int) Math.ceil((double) solicitudes.size() / size);
 
             return ResponseEntity.ok(Map.of(
-                "content", solicitudesPage.getContent(),
-                "totalElements", solicitudesPage.getTotalElements(),
-                "totalPages", solicitudesPage.getTotalPages(),
-                "page", solicitudesPage.getNumber(),
-                "size", solicitudesPage.getSize()
+                "content", pageContent,
+                "totalElements", solicitudes.size(),
+                "totalPages", totalPages,
+                "page", page,
+                "size", size
             ));
         } catch (Exception e) {
             logger.error("Error obteniendo solicitudes de presupuesto: {}", e.getMessage(), e);

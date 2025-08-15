@@ -12,16 +12,35 @@
         <dependencySet>
             <outputDirectory>java/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
+            <useTransitiveDependencies>true</useTransitiveDependencies>
             <includes>
-                <!-- Solo incluye lo esencial para tu Lambda -->
-                <include>software.amazon.awssdk:dynamodb*</include>
-                <include>software.amazon.awssdk:ses*</include>
+                <!-- AWS SDK Core y servicios -->
+                <include>software.amazon.awssdk:*</include>
+                <!-- Spring Cloud AWS Parameter Store -->
+                <include>io.awspring.cloud:*</include>
+                <!-- Logging y JSON -->
                 <include>org.slf4j:*</include>
-                <include>com.opencsv:*</include>
                 <include>com.fasterxml.jackson.core:*</include>
                 <include>com.fasterxml.jackson.databind:*</include>
-                <!-- Elimina starters de Spring Boot, POI, JPA, etc. si no son requeridos en Lambda -->
+                <!-- CSV Processing -->
+                <include>com.opencsv:*</include>
+                <!-- Spring Boot y Security esenciales -->
+                <include>org.springframework.boot:spring-boot-starter-web</include>
+                <include>org.springframework.boot:spring-boot-starter-security</include>
+                <include>org.springframework.boot:spring-boot-starter-validation</include>
+                <!-- JWT y Auth -->
+                <include>com.auth0:java-jwt</include>
+                <include>io.jsonwebtoken:jjwt</include>
             </includes>
+            <excludes>
+                <!-- Excluir dependencias pesadas del LAYER (pero mantenerlas en el JAR principal) -->
+                <exclude>org.apache.poi:*</exclude>
+                <exclude>org.opensaml:*</exclude>
+                <exclude>net.shibboleth.utilities:*</exclude>
+                <exclude>org.springframework.security:spring-security-saml2-service-provider</exclude>
+                <exclude>org.springframework.boot:spring-boot-starter-data-jpa</exclude>
+                <exclude>org.hibernate:*</exclude>
+            </excludes>
         </dependencySet>
     </dependencySets>
 </assembly>

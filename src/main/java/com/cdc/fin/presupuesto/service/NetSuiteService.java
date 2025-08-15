@@ -25,7 +25,7 @@ public class NetSuiteService {
     @Value("${netsuite.baseUrl}")
     private String baseUrl;
 
-    public String testConnection() {
+    public String getResource(String resource) {
         OAuth10aService service = new ServiceBuilder(consumerKey)
                 .apiSecret(consumerSecret)
                 .build(new com.github.scribejava.core.builder.api.DefaultApi10a() {
@@ -43,7 +43,8 @@ public class NetSuiteService {
                     }
                 });
         OAuth1AccessToken token = new OAuth1AccessToken(accessToken, tokenSecret);
-        OAuthRequest request = new OAuthRequest(Verb.GET, baseUrl);
+        String url = baseUrl.endsWith("/") ? baseUrl + resource : baseUrl + "/" + resource;
+        OAuthRequest request = new OAuthRequest(Verb.GET, url);
         request.addHeader("Content-Type", "application/json");
         service.signRequest(token, request);
         if (realm != null && !realm.isBlank()) {

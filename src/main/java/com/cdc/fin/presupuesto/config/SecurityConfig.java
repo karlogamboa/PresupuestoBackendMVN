@@ -97,11 +97,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // String loginPageUrl = "/" + stage +"/saml2/authenticate/okta-saml";
 
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/login/saml2/sso/okta-saml", "/scim/v2/**", "/api/netsuite/**").permitAll()
+                .requestMatchers("/health", "/login/saml2/sso/okta-saml", "/scim/v2/**", "/netsuite/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )
@@ -112,9 +111,6 @@ public class SecurityConfig {
                 .loginProcessingUrl("/saml2/authenticate/okta-saml") // <-- NO debe tener el stage
                 .successHandler(jwtSamlSuccessHandler())
             )
-            // .formLogin(form -> form
-            //     .loginPage(loginPageUrl)
-            // )
             .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

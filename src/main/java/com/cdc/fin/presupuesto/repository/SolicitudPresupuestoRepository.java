@@ -3,9 +3,6 @@ package com.cdc.fin.presupuesto.repository;
 import com.cdc.fin.presupuesto.model.SolicitudPresupuesto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -72,26 +69,6 @@ public class SolicitudPresupuestoRepository {
                 .collect(Collectors.toList());
     }
 
-    // Método paginado para buscar por número de empleado
-    public Page<SolicitudPresupuesto> findByNumEmpleado(String numeroEmpleado, Pageable pageable) {
-        List<SolicitudPresupuesto> all = findByNumEmpleado(numeroEmpleado);
-        int total = all.size();
-        int fromIndex = Math.min((int) pageable.getOffset(), total);
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
-        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
-        return new PageImpl<>(paged, pageable, total);
-    }
-
-    // Método paginado para buscar todos
-    public Page<SolicitudPresupuesto> findAll(Pageable pageable) {
-        List<SolicitudPresupuesto> all = findAll();
-        int total = all.size();
-        int fromIndex = Math.min((int) pageable.getOffset(), total);
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
-        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
-        return new PageImpl<>(paged, pageable, total);
-    }
-
     public void deleteById(String id, String solicitudId) {
         Key key = Key.builder()
                 .partitionValue(id)
@@ -120,9 +97,9 @@ public class SolicitudPresupuestoRepository {
         }
     }
 
-    public Page<SolicitudPresupuesto> findByDynamicFilters(Map<String, String> filters, Pageable pageable) {
+    public List<SolicitudPresupuesto> findByDynamicFilters(Map<String, String> filters) {
         // Escaneo completo y filtrado en memoria (útil para pocos registros)
-        List<SolicitudPresupuesto> all = findAll().stream()
+        return findAll().stream()
             .filter(s -> {
                 boolean matches = true;
                 for (Map.Entry<String, String> entry : filters.entrySet()) {
@@ -171,11 +148,5 @@ public class SolicitudPresupuestoRepository {
                 return matches;
             })
             .collect(Collectors.toList());
-
-        int total = all.size();
-        int fromIndex = Math.min((int) pageable.getOffset(), total);
-        int toIndex = Math.min(fromIndex + pageable.getPageSize(), total);
-        List<SolicitudPresupuesto> paged = all.subList(fromIndex, toIndex);
-        return new PageImpl<>(paged, pageable, total);
     }
 }
