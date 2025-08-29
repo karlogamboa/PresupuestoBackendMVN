@@ -111,11 +111,12 @@ public class DepartamentoService {
             if (header == null) throw new Exception("El archivo CSV está vacío");
 
             // Permite variantes de nombres de columna
-            int idxNombre = -1, idxSub = -1, idxCeCo = -1, idxPresupuesto = -1;
+            int idxNombre = -1, idxSub = -1, idxRrhh = -1, idxCeCo = -1, idxPresupuesto = -1;
             for (int i = 0; i < header.length; i++) {
                 String col = header[i].trim().replace(" ", "").replace("-", "").toLowerCase();
                 if (col.equals("departamento") || col.equals("nombredepartamento")) idxNombre = i;
                 if (col.equals("nombre")) idxSub = i;
+                if (col.equals("rrhh")) idxRrhh = i;
                 if (col.equals("ceco")) idxCeCo = i;
                 if (col.equals("presupuestodefault")) idxPresupuesto = i;
             }
@@ -130,6 +131,12 @@ public class DepartamentoService {
                 for (int i = 0; i < header.length; i++) {
                     String col = header[i].trim().replace(" ", "").replace("-", "").toLowerCase();
                     if (col.contains("nombre")) { idxSub = i; break; }
+                }
+            }
+            if (idxRrhh == -1) {
+                for (int i = 0; i < header.length; i++) {
+                    String col = header[i].trim().replace(" ", "").replace("-", "").toLowerCase();
+                    if (col.contains("rrhh")) { idxRrhh = i; break; }
                 }
             }
             if (idxCeCo == -1) {
@@ -149,8 +156,8 @@ public class DepartamentoService {
                     if (col.contains("presupuesto")) { idxPresupuesto = i; break; }
                 }
             }
-            if (idxNombre == -1 || idxSub == -1 || idxCeCo == -1 || idxPresupuesto == -1) {
-                throw new Exception("El archivo CSV debe contener las columnas: Departamento, Sub-Departamento, CeCo, Presupuesto Default");
+            if (idxNombre == -1 || idxSub == -1 || idxRrhh == -1 || idxCeCo == -1 || idxPresupuesto == -1) {
+                throw new Exception("El archivo CSV debe contener las columnas: Departamento, Sub-Departamento, RRHH, CeCo, Presupuesto Default");
             }
 
             String[] record;
@@ -160,6 +167,7 @@ public class DepartamentoService {
                     Departamento departamento = new Departamento();
                     departamento.setNombreDepartamento(record[idxNombre].trim());
                     departamento.setSubDepartamento(record[idxSub].trim());
+                    departamento.setRrhh(record[idxRrhh].trim());
                     departamento.setCeco(record[idxCeCo].trim());
                     departamento.setPresupuestoDefault(record[idxPresupuesto].trim());
                     if (departamento.getNombreDepartamento().isEmpty()) {

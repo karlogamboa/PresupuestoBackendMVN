@@ -10,6 +10,7 @@ public class Departamento {
     private String id;
     private String nombreDepartamento;
     private String subDepartamento;
+    private String rrhh;
     private String ceco;
     private String presupuestoDefault;
 
@@ -40,6 +41,15 @@ public class Departamento {
 
     public void setSubDepartamento(String subDepartamento) {
         this.subDepartamento = subDepartamento;
+    }
+
+    @DynamoDbAttribute("RRHH")
+    public String getRrhh() {
+        return rrhh;
+    }
+
+    public void setRrhh(String rrhh) {
+        this.rrhh = rrhh;
     }
 
     @DynamoDbAttribute("CeCo")
