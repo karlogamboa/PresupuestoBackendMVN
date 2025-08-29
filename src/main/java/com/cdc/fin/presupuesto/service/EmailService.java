@@ -24,6 +24,9 @@ public class EmailService {
     @Value("${email.from}")
     private String defaultFrom;
 
+    @Value("${email.cc}")
+    private String defaultCc;
+
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
     @Autowired
@@ -46,7 +49,12 @@ public class EmailService {
         try {
             SendEmailRequest request = SendEmailRequest.builder()
                 .source(from)
-                .destination(d -> d.toAddresses(toAddress))
+                .destination(d -> {
+                    d.toAddresses(toAddress);
+                    if (defaultCc != null && !defaultCc.isEmpty()) {
+                        d.ccAddresses(defaultCc);
+                    }
+                })
                 .message(m -> m
                     .subject(s -> s.data(subject).charset(charsetUtf8))
                     .body(b -> b.text(tb -> tb.data(body).charset(charsetUtf8)))
@@ -75,7 +83,12 @@ public class EmailService {
         try {
             SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
                 .source(from)
-                .destination(d -> d.toAddresses(to))
+                .destination(d -> {
+                    d.toAddresses(to);
+                    if (defaultCc != null && !defaultCc.isEmpty()) {
+                        d.ccAddresses(defaultCc);
+                    }
+                })
                 .message(m -> m
                     .subject(s -> s.data(subject).charset(charsetUtf8))
                     .body(b -> {
