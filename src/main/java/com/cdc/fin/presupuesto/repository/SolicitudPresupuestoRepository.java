@@ -147,6 +147,13 @@ public class SolicitudPresupuestoRepository {
                 }
                 return matches;
             })
+            .sorted((a, b) -> {
+                // Ordena por fecha descendente (nulls al final)
+                if (a.getFecha() == null && b.getFecha() == null) return 0;
+                if (a.getFecha() == null) return 1;
+                if (b.getFecha() == null) return -1;
+                return b.getFecha().compareTo(a.getFecha());
+            })
             .collect(Collectors.toList());
     }
 }
