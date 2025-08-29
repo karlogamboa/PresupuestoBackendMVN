@@ -146,57 +146,71 @@ Para debug, revisa los logs del backend para confirmar que las cookies de sesió
 ## Instalación y Ejecución
 
 ### Prerrequisitos
-- Java 11 o superior
+- Java 21 or superior
 - Maven
-- AWS CLI configurado
+- Docker (for App Runner deployment)
+- AWS CLI configured
 
-> **Nota de solución de problemas:**  
-> Si ves el error de compilación `package javax.servlet.http does not exist`, asegúrate de que tu proyecto incluya la dependencia de `javax.servlet-api` en el archivo `pom.xml`.  
-> Ejemplo de dependencia Maven:
-> ```xml
-> <dependency>
->   <groupId>javax.servlet</groupId>
->   <artifactId>javax.servlet-api</artifactId>
->   <version>4.0.1</version>
->   <scope>provided</scope>
-> </dependency>
-> ```
-> Si usas Spring Boot, normalmente esta dependencia ya está incluida, pero si usas un entorno diferente o excluiste dependencias, agrégala manualmente.
+### Local Development
+```bash
+git clone https://github.com/tu-usuario/presupuesto-backend.git
+cd presupuesto-backend
+mvn clean package
+java -jar target/presupuesto-backend-*.jar --spring.profiles.active=dev
+```
 
-### Pasos de Instalación
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/tu-usuario/presupuesto-backend.git
-   cd presupuesto-backend
-   ```
+### App Runner Deployment
 
-2. **Construir el proyecto**
-   ```bash
-   mvn clean package
-   ```
+#### 1. Build and Push Docker Image
+```bash
+# Build the application
+mvn clean package -DskipTests
 
-3. **Crear tablas en DynamoDB**
-   ```bash
-   # Ejecutar scripts con prefijo de ambiente
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-solicitudes-presupuesto-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-proveedores-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-departamentos-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-categorias-gasto-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-scim-users-aws.sh
-   ENVIRONMENT=qa TEAM_PREFIX=fin ./dynamodb-scripts/create-scim-groups-aws.sh
-   # ... otros scripts según necesidad
-   ```
+# Build Docker image
+docker build -t presupuesto-backend .
 
-4. **Configurar variables de entorno**
-   - `ENVIRONMENT`: `dev`, `qa`, o `prod`
-   - `SPRING_PROFILES_ACTIVE`: `lambda,{environment}`
-   - `AWS_REGION`: Región de AWS (ej: `us-east-2`)
+# Tag for ECR
+docker tag presupuesto-backend:latest your-account.dkr.ecr.us-east-2.amazonaws.com/presupuesto-backend:latest
 
-5. **Ejecutar la aplicación**
-   ```bash
-   java -jar target/presupuesto-backend.jar --spring.profiles.active=dev
-   # Se ejecuta en http://localhost:8080 sin SSL
-   ```
+# Push to ECR
+aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin your-account.dkr.ecr.us-east-2.amazonaws.com
+docker push your-account.dkr.ecr.us-east-2.amazonaws.com/presupuesto-backend:latest
+```
+
+#### 2. Create App Runner Service
+```bash
+aws apprunner create-service \
+  --service-name presupuesto-backend-qa \
+  --source-configuration file://apprunner-config.json \
+  --instance-configuration Cpu=1024,Memory=2048 \
+  --health-check-configuration Protocol=HTTP,Path=/health
+```
+
+#### 3. Configure Environment Variables
+Set these environment variables in your App Runner service:
+- `ENVIRONMENT=qa`
+- `SPRING_PROFILES_ACTIVE=apprunner,qa`
+- `AWS_REGION=us-east-2`
+- `SERVER_PORT=8080`
+
+## Architecture: Containerized Spring Boot on App Runner
+
+This backend is designed to run as a containerized Spring Boot application on AWS App Runner, using DynamoDB and SES.
+
+### App Runner Benefits:
+- **Fully Managed**: No server management required
+- **Auto Scaling**: Automatic scaling based on traffic
+- **Load Balancing**: Built-in load balancing
+- **HTTPS**: Automatic HTTPS termination
+- **Health Checks**: Built-in health monitoring
+- **CI/CD Integration**: Easy integration with source control
+
+### Migration from Lambda:
+- **Container Runtime**: Runs in containers instead of serverless functions
+- **Persistent Connections**: Can maintain database connection pools
+- **Standard Spring Boot**: Full Spring Boot capabilities enabled
+- **HTTP Server**: Uses embedded Tomcat instead of Lambda runtime
+- **Always Warm**: No cold start issues
 
 ## Uso de Importación CSV
 

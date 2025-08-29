@@ -18,8 +18,8 @@ public class ScimGroupRepository {
     private String groupsTable;
 
     @Autowired
-    public ScimGroupRepository(@Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.groupsTable = tablePrefix + "scim-groups";
+    public ScimGroupRepository(@Value("${aws.dynamodb.table.scim-groups}") String tableName) {
+        this.groupsTable = tableName;
     }
 
     public String listGroups() {

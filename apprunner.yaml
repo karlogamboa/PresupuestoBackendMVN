@@ -1,0 +1,28 @@
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "Build phase started on `date`"
+      - mvn clean package -DskipTests
+      - echo "Build phase completed on `date`"
+  runtime-version: corretto21
+run:
+  runtime-version: docker
+  command: java -Xmx1024m -Xms512m -jar app.jar
+  network:
+    port: 8080
+    env: 
+      - name: SPRING_PROFILES_ACTIVE
+        value: "apprunner,qa"
+      - name: AWS_REGION
+        value: "us-east-2"
+      - name: SERVER_PORT
+        value: "8080"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "apprunner,qa"
+    - name: AWS_REGION  
+      value: "us-east-2"
+    - name: API_STAGE
+      value: "qa"

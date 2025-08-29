@@ -1,7 +1,6 @@
 package com.cdc.fin.presupuesto.repository;
 
 import com.cdc.fin.presupuesto.model.Proveedor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
@@ -21,15 +20,12 @@ import java.util.stream.Collectors;
 public class ProveedorRepository {
 
     private final DynamoDbTable<Proveedor> table;
+    private final DynamoDbEnhancedClient enhancedClient;
 
-    @Autowired
-    private DynamoDbEnhancedClient enhancedClient;
-
-    @Autowired
     public ProveedorRepository(DynamoDbEnhancedClient enhancedClient,
-                              @Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.table = enhancedClient.table(tablePrefix + "proveedores", 
-                                         TableSchema.fromBean(Proveedor.class));
+                              @Value("${aws.dynamodb.table.proveedores}") String tableName) {
+        this.enhancedClient = enhancedClient;
+        this.table = enhancedClient.table(tableName, TableSchema.fromBean(Proveedor.class));
     }
 
     public Proveedor save(Proveedor proveedor) {

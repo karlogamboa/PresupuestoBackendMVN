@@ -27,8 +27,8 @@ public class DepartamentoRepository {
 
     @Autowired
     public DepartamentoRepository(DynamoDbEnhancedClient enhancedClient,
-                                 @Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.table = enhancedClient.table(tablePrefix + "departamentos", 
+                                 @Value("${aws.dynamodb.table.departamentos}") String tableName) {
+        this.table = enhancedClient.table(tableName, 
                                          TableSchema.fromBean(Departamento.class));
     }
 

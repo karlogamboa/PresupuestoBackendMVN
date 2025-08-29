@@ -27,8 +27,8 @@ public class CategoriaGastoRepository {
 
     @Autowired
     public CategoriaGastoRepository(DynamoDbEnhancedClient enhancedClient,
-                                   @Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.table = enhancedClient.table(tablePrefix + "categorias-gasto", 
+                                   @Value("${aws.dynamodb.table.categorias-gasto}") String tableName) {
+        this.table = enhancedClient.table(tableName, 
                                          TableSchema.fromBean(CategoriaGasto.class));
     }
 

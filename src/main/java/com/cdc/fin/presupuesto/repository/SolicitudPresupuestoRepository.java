@@ -30,8 +30,8 @@ public class SolicitudPresupuestoRepository {
 
     @Autowired
     public SolicitudPresupuestoRepository(DynamoDbEnhancedClient enhancedClient,
-                                         @Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.table = enhancedClient.table(tablePrefix + "solicitudes", 
+                                         @Value("${aws.dynamodb.table.solicitudes}") String tableName) {
+        this.table = enhancedClient.table(tableName, 
                                          TableSchema.fromBean(SolicitudPresupuesto.class));
     }
 

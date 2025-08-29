@@ -72,8 +72,8 @@ public class ScimUserRepository {
     private String usersTable;
 
     @Autowired
-    public ScimUserRepository(@Value("${aws.dynamodb.table.prefix}") String tablePrefix) {
-        this.usersTable = tablePrefix + "scim-users";
+    public ScimUserRepository(@Value("${aws.dynamodb.table.scim-users}") String tableName) {
+        this.usersTable = tableName;
     }
 
     // Crear usuario (POST /Users)

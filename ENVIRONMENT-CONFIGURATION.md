@@ -72,6 +72,34 @@ export ENVIRONMENT=dev
 export SPRING_PROFILES_ACTIVE=lambda,dev
 ```
 
+### AWS App Runner (Ambiente Principal)
+
+El sistema está diseñado para ejecutarse principalmente en AWS App Runner. Para App Runner, las variables de entorno se configuran en el servicio:
+
+#### QA App Runner:
+```bash
+export ENVIRONMENT=qa
+export SPRING_PROFILES_ACTIVE=apprunner,qa
+export AWS_REGION=us-east-2
+export SERVER_PORT=8080
+```
+
+#### Producción App Runner:
+```bash
+export ENVIRONMENT=prod
+export SPRING_PROFILES_ACTIVE=apprunner,prod
+export AWS_REGION=us-east-2
+export SERVER_PORT=8080
+```
+
+#### Desarrollo App Runner (para pruebas):
+```bash
+export ENVIRONMENT=dev
+export SPRING_PROFILES_ACTIVE=apprunner,dev
+export AWS_REGION=us-east-2
+export SERVER_PORT=8080
+```
+
 ## Estructura de Parameter Store
 
 ```

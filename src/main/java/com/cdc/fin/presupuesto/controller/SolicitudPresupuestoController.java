@@ -33,9 +33,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import java.util.Base64;
-
 @RestController
 @RequestMapping("/api/solicitudes-presupuesto")
 public class SolicitudPresupuestoController {
@@ -288,34 +285,26 @@ public class SolicitudPresupuestoController {
         }
     }
 
-    // Reemplaza el endpoint POST /procesar para Lambda Proxy Integration (Base64)
+    // Replace Lambda-specific POST endpoint with standard Spring Boot endpoint
     @PostMapping("/procesar")
-    public APIGatewayProxyResponseEvent procesarSolicitudesLambda() {
-        logger.info("POST /api/solicitudes-presupuesto/procesar endpoint invoked (Lambda Proxy Integration)");
+    public ResponseEntity<byte[]> procesarSolicitudesPost() {
+        logger.info("POST /api/solicitudes-presupuesto/procesar endpoint invoked (App Runner)");
         try {
             logger.info("Llamando a procesarYExportarExcel...");
             byte[] excelBytes = procesarSolicitudesService.procesarYExportarExcel();
-            logger.info("Bytes a codificar en Base64: {}", excelBytes.length);
-            String base64Body = Base64.getEncoder().encodeToString(excelBytes);
+            logger.info("Procesamiento y exportación completado. Bytes generados: {}", excelBytes.length);
 
-            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-            response.setStatusCode(200);
-            response.setIsBase64Encoded(true);
-            response.setHeaders(Map.of(
-                "Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "Content-Disposition", "attachment; filename=\"solicitudes.xlsx\""
-            ));
-            response.setBody(base64Body);
-            logger.info("Procesamiento y exportación de solicitudes completado (Lambda Proxy Integration).");
-            return response;
+            return ResponseEntity.ok()
+                .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                .header("Content-Disposition", "attachment; filename=\"solicitudes.xlsx\"")
+                .body(excelBytes);
         } catch (Exception ex) {
             logger.error("Error en procesarYExportarExcel: {}", ex.getMessage(), ex);
-            APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-            response.setStatusCode(500);
-            response.setHeaders(Map.of("Content-Type", "application/json"));
-            response.setBody("{\"success\":false,\"message\":\"Error procesando solicitudes: " + ex.getMessage().replace("\"", "\\\"") + "\"}");
-            response.setIsBase64Encoded(false);
-            return response;
+            // Devuelve un error 500 con un cuerpo JSON como bytes
+            String errorJson = "{\"success\":false,\"message\":\"Error procesando solicitudes\"}";
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("Content-Type", "application/json")
+                .body(errorJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
     }
 
