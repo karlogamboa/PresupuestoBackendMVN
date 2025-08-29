@@ -288,7 +288,8 @@ public class EmailService {
     // Utilidad para obtener fecha/hora actual formateada
     public static String fechaCambioActual() {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return dtf.format(LocalDateTime.now());
+        java.time.ZoneId zoneId = java.time.ZoneId.of("America/Mexico_City");
+        return dtf.format(java.time.ZonedDateTime.now(zoneId));
     }
 
     /**
